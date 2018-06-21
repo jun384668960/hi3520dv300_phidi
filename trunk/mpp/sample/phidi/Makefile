@@ -15,8 +15,7 @@ CFLAGS += $(PHIDI_INC)
 SRC  := $(wildcard *.c) 
 OBJ  := $(SRC:%.c=%.o)
 
-#TARGET := $(OBJ:%.o=%)
-TARGET := phidi
+TARGET := $(OBJ:%.o=%)
 .PHONY : clean all
 
 all: $(TARGET)
@@ -24,13 +23,8 @@ all: $(TARGET)
 MPI_LIBS := $(REL_LIB)/libmpi.a
 MPI_LIBS += $(REL_LIB)/libhdmi.a
              
-
-#$(TARGET):%:%.o $(COMM_OBJ)
-
-$(TARGET):$(OBJ) $(COMM_OBJ)
-#	$(CC) $(CFLAGS) -lpthread -lm -o $@ $^ $(MPI_LIBS) $(AUDIO_LIBA) $(JPEGD_LIBA)
+$(TARGET):%:%.o $(COMM_OBJ)
 	$(CC) $(CFLAGS) -lpthread -lm -o $@ $^ $(MPI_LIBS) $(AUDIO_LIBA) $(JPEGD_LIBA) -L$(PHIDI_LIB) -lfdk-aac
-
 
 clean:
 	@rm -f $(TARGET)

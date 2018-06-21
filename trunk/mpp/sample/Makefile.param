@@ -6,8 +6,10 @@ ifeq ($(PARAM_FILE), )
 endif
 
 COMMON_DIR:=$(PWD)/../common
+PROCOM_DIR:=$(PWD)/../../../utils
 
 INC_FLAGS := -I$(REL_INC) -I$(COMMON_DIR) 
+INC_FLAGS += -I$(PROCOM_DIR)
 INC_FLAGS += -I$(SDK_PATH)/mpp/$(EXTDRV)/tlv320aic31
 INC_FLAGS += -I$(SDK_PATH)/mpp/$(EXTDRV)/nvp6124
 INC_FLAGS += -I$(SDK_PATH)/mpp/$(EXTDRV)/hi_i2c
@@ -48,4 +50,7 @@ endif
 #########################################################################
 
 COMM_SRC := $(wildcard $(COMMON_DIR)/*.c)
+PROCOM_SRC := $(wildcard $(PROCOM_DIR)/*.c)
+
 COMM_OBJ := $(COMM_SRC:%.c=%.o)
+COMM_OBJ += $(PROCOM_SRC:%.c=%.o)
