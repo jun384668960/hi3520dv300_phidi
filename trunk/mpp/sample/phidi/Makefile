@@ -25,6 +25,7 @@ MPI_LIBS += $(REL_LIB)/libhdmi.a
              
 $(TARGET):%:%.o $(COMM_OBJ)
 	$(CC) $(CFLAGS) -lpthread -lm -o $@ $^ $(MPI_LIBS) $(AUDIO_LIBA) $(JPEGD_LIBA) -L$(PHIDI_LIB) -lfdk-aac
+	cp $(TARGET) $(SDK_PATH)/
 
 clean:
 	@rm -f $(TARGET)

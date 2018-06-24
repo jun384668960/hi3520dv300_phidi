@@ -42,12 +42,16 @@ VIDEO_NORM_E gs_enNorm = VIDEO_ENCODING_MODE_NTSC;
 #define VPSS_LSTR_CHN     		1
 //#define VENC_MAX_CHN_NUM  2
 
+#define MAX_FRAME_LEN (1024*1024)
 HANDLE_AACENCODER hAacEncoder;
-static SAMPLE_VENC_GETSTREAM_PARA_S gs_stPara;
+static PAYLOAD_TYPE_E gs_enPayloadType = PT_G711A;//PT_G711A;//PT_LPCM;
+static SAMPLE_VENC_GETSTREAM_PARA_S gs_stVPara;
+static SAMPLE_VENC_GETSTREAM_PARA_S gs_stAPara;
 static pthread_t gs_VencPid;
-//static pthread_t gs_AencPid;
+static pthread_t gs_AencPid;
 static shm_stream_t* g_handle = NULL;
-static unsigned char g_frame[512*1024];
+static shm_stream_t* g_audiohandle = NULL;
+static unsigned char* g_frame = NULL;
 
 HI_U32 HDMI_H,HDMI_W;
 
@@ -108,12 +112,51 @@ void FDK_AACLC_Init(HI_VOID)
 	LOGI_print("Unable to initialize the encoder");
 }  
 
+
+HI_S32 Phidi_AOUT_HdmiSet(AIO_ATTR_S stHdmiAoAttr)
+{
+	HI_S32 s32Ret;
+    HI_HDMI_ATTR_S      stAttr;
+
+	s32Ret = HI_MPI_HDMI_SetAVMute(HI_HDMI_ID_0, HI_TRUE);
+    if(HI_SUCCESS != s32Ret)
+    {
+        printf("[Func]:%s [Line]:%d [Info]:%s\n", __FUNCTION__, __LINE__, "failed");
+        return HI_FAILURE;
+    }
+    HI_MPI_HDMI_GetAttr(HI_HDMI_ID_0, &stAttr);
+
+    stAttr.bEnableAudio = HI_TRUE;        /**< if enable audio */
+    stAttr.enSoundIntf = HI_HDMI_SND_INTERFACE_I2S; /**< source of HDMI audio, HI_HDMI_SND_INTERFACE_I2S suggested.the parameter must be consistent with the input of AO*/
+    stAttr.enSampleRate = stHdmiAoAttr.enSamplerate;        /**< sampling rate of PCM audio,the parameter must be consistent with the input of AO */
+    stAttr.u8DownSampleParm = HI_FALSE;    /**< parameter of downsampling  rate of PCM audio,default :0 */
+    
+    stAttr.enBitDepth = 8 * (stHdmiAoAttr.enBitwidth+1);   /**< bitwidth of audio,default :16,the parameter must be consistent with the config of AO */
+    stAttr.u8I2SCtlVbit = 0;        /**< reserved,should be 0, I2S control (0x7A:0x1D) */
+    
+    stAttr.bEnableAviInfoFrame = HI_TRUE; /**< if enable  AVI InfoFrame*/
+    stAttr.bEnableAudInfoFrame = HI_TRUE;; /**< if enable AUDIO InfoFrame*/
+    
+    
+    HI_MPI_HDMI_SetAttr(HI_HDMI_ID_0, &stAttr);
+
+    s32Ret = HI_MPI_HDMI_SetAVMute(HI_HDMI_ID_0, HI_FALSE);
+    if(HI_SUCCESS != s32Ret)
+    {
+        printf("[Func]:%s [Line]:%d [Info]:%s\n", __FUNCTION__, __LINE__, "failed");
+        return HI_FAILURE;
+    }
+    
+    printf("HDMI start success.\n");
+    return HI_SUCCESS;
+}
+
 //	Audio init
 HI_S32 Phidi_AENC_Init(HI_VOID)
 {
 	HI_S32 		s32Ret = 0;
 	//HI_S32			i = 0; 
-	AUDIO_DEV   AiDev = 1;
+	AUDIO_DEV   AiDev = 0;
 	AI_CHN      AiChn	= 0;
 	AENC_CHN    AeChn = 0;
 	//HI_S32 		fd					= -1;
@@ -123,11 +166,11 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
     stAioAttr.enSamplerate = AUDIO_SAMPLE_RATE_48000;		
 	stAioAttr.enBitwidth  = AUDIO_BIT_WIDTH_16;						
 	stAioAttr.enWorkmode = AIO_MODE_I2S_SLAVE;
-    stAioAttr.enSoundmode = AUDIO_SOUND_MODE_STEREO;
+    stAioAttr.enSoundmode = AUDIO_SOUND_MODE_MONO;
     stAioAttr.u32EXFlag = 1;															//扩展成16 位，8bit到16bit 扩展标志只对AI采样精度为8bit 时有效
     stAioAttr.u32FrmNum = 30;
     stAioAttr.u32PtNumPerFrm = 320;
-    stAioAttr.u32ChnCnt = 2;										//stereo mode must be 2 
+    stAioAttr.u32ChnCnt = 1;										//stereo mode must be 2 
     stAioAttr.u32ClkChnCnt   = 2;
     stAioAttr.u32ClkSel = 0;
 		
@@ -137,7 +180,7 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
     s32Ret = SAMPLE_INNER_CODEC_CfgAudio(stAioAttr.enSamplerate); 
     if (HI_SUCCESS != s32Ret)
     {
-        LOGE_print("SAMPLE_INNER_CODEC_CfgAudio failed\n");
+        LOGE_print("SAMPLE_INNER_CODEC_CfgAudio failed");
         return s32Ret;
     }
 	*/
@@ -170,9 +213,9 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
     //memset(&stAencAttr, 0, sizeof(AENC_CHN_ATTR_S));
     //memset(&stAencLpcm, 0, sizeof(AENC_ATTR_LPCM_S));
     stAencAttr.pValue = &stAencLpcm;
-    stAencAttr.enType       = PT_LPCM;
+    stAencAttr.enType       = gs_enPayloadType;
     stAencAttr.u32BufSize 	= 30;
-    stAencAttr.u32PtNumPerFrm	= 1024;
+    stAencAttr.u32PtNumPerFrm	= 320;
 	
     //start Audio Encode
     /* create aenc chn*/
@@ -183,7 +226,7 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
                AeChn, s32Ret);
         return HI_FAILURE;
     }        
-    LOGI_print("after HI_MPI_AENC_CreateChn\n");
+    LOGI_print("after HI_MPI_AENC_CreateChn");
  	 
     /********************************************
       step 4: Aenc bind Ai Chn
@@ -208,6 +251,7 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
     
     return s32Ret;
 }	
+
 
 /******************************************************************************
 * function :  H264 encode
@@ -262,18 +306,18 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
     int g_fd = open("/dev/it6801", 0);
     if(g_fd < 0)
     {
-        LOGE_print("Open it6801 error!\n");
+        LOGE_print("Open it6801 error!");
     }
 	else
 	{	
 		HDMImode = ioctl(g_fd, 0x10, 0);
 		if (HDMImode < 0)
 	 	{
-    		LOGE_print(" VI_SCAN_INTERLACED read error!\n");
+    		LOGE_print(" VI_SCAN_INTERLACED read error!");
 		}
 		if(HDMImode > 0){ 
 			HDMImode = 5;		//stViDevAttr.enScanMode = VI_SCAN_INTERLACED;
-			LOGI_print("interlace mode\n");    
+			LOGI_print("interlace mode");    
 		
 		} else {
 			HDMImode = ioctl(g_fd, 0x12, 0);
@@ -281,29 +325,29 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
     }
     close(g_fd);
 
-	LOGI_print("resolution mode : %d\n",HDMImode); 
+	LOGI_print("resolution mode : %d",HDMImode); 
 	if(HDMImode == 2) {   	//720P
 		HDMI_W = 1280;
 	    HDMI_H = 720;
-	    LOGI_print("resolution : 720P\n"); 
+	    LOGI_print("resolution : 720P"); 
     }	
     if(HDMImode == 3) {			//576P
 		HDMI_W = 720;
         HDMI_H = 576;
-        LOGI_print("resolution : 576P\n");			
+        LOGI_print("resolution : 576P");			
     }
     if(HDMImode == 4) {			//480P
  		HDMI_W = 720;
 		HDMI_H = 480;   			
-		LOGI_print("resolution : 480P\n");
+		LOGI_print("resolution : 480P");
     }	
     if(HDMImode == 1) {
-    	LOGI_print("resolution : 1080P\n");
+    	LOGI_print("resolution : 1080P");
     }	
 	
     memset(&stViDevAttr,0,sizeof(stViDevAttr));
     memcpy(&stViDevAttr,&DEV_ATTR_BT1120_1080P_1MUX_BASE,sizeof(stViDevAttr));     
-   	LOGI_print("before HI_MPI_VI_SetDevAttr\n");
+   	LOGI_print("before HI_MPI_VI_SetDevAttr");
    
     s32Ret = HI_MPI_VI_SetDevAttr(dev, &stViDevAttr);
     if (s32Ret != HI_SUCCESS)
@@ -361,7 +405,7 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
     {
 		LOGE_print("call HI_MPI_VI_SetChnAttr failed with %#x", s32Ret);
 	} else {
-		LOGI_print("HI_MPI_VI_SetChnAttr(%d) ready\n", chn); 
+		LOGI_print("HI_MPI_VI_SetChnAttr(%d) ready", chn); 
     }	
     
     s32Ret = HI_MPI_VI_EnableChn(chn);
@@ -530,7 +574,7 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
     }
     else
     {
-    	LOGE_print("HI_MPI_VENC_CreateChn [%d] success",VencChn);
+    	LOGI_print("HI_MPI_VENC_CreateChn [%d] success",VencChn);
     }
 
     s32Ret = HI_MPI_VENC_StartRecvPic(VencChn);
@@ -556,8 +600,7 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
         LOGE_print("failed with %#x!", s32Ret);
         //return HI_FAILURE;
     } else {
-    	LOGE_print("VENC_BindVpss vpssChn=%d vencChn=%d", VpssChn, VencChn);
-    	
+    	LOGI_print("VENC_BindVpss vpssChn=%d vencChn=%d", VpssChn, VencChn);
     }
 
 	return s32Ret;
@@ -567,7 +610,7 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
     //s32Ret = SAMPLE_COMM_VENC_StartGetStream(s32VpssGrpCnt*2);
     //if (HI_SUCCESS != s32Ret)
     //{
-    //    printf("Start Venc failed!\n");
+    //    printf("Start Venc failed!");
         //goto END_VENC_8_720p_3;
     //}
 	
@@ -590,6 +633,176 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
     return s32Ret;
 }
 
+
+HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
+{
+    HI_S32 s32Ret;
+    AUDIO_DEV   AiDev = SAMPLE_AUDIO_AI_DEV;
+    AI_CHN      AiChn = 0;
+    AUDIO_DEV   AoDev = SAMPLE_AUDIO_HDMI_AO_DEV;
+    AO_CHN      AoChn = 0;
+
+    AIO_ATTR_S stHdmiAoAttr;
+	AUDIO_RESAMPLE_ATTR_S stAoReSampleAttr;
+
+	stHdmiAoAttr.enSamplerate   = AUDIO_SAMPLE_RATE_48000;
+    stHdmiAoAttr.enBitwidth     = AUDIO_BIT_WIDTH_16;
+    stHdmiAoAttr.enWorkmode     = AIO_MODE_I2S_MASTER;
+    stHdmiAoAttr.enSoundmode    = AUDIO_SOUND_MODE_MONO;
+    stHdmiAoAttr.u32EXFlag      = 1;
+    stHdmiAoAttr.u32FrmNum      = 30;
+    stHdmiAoAttr.u32PtNumPerFrm = SAMPLE_AUDIO_PTNUMPERFRM;
+    stHdmiAoAttr.u32ChnCnt      = 2;
+	stHdmiAoAttr.u32ClkChnCnt   = 2;
+    stHdmiAoAttr.u32ClkSel      = 0;  
+	
+	/* ao 8k -> 48k */
+	stAoReSampleAttr.u32InPointNum	= SAMPLE_AUDIO_PTNUMPERFRM;
+	stAoReSampleAttr.enInSampleRate = AUDIO_SAMPLE_RATE_32000;
+	stAoReSampleAttr.enOutSampleRate = AUDIO_SAMPLE_RATE_48000;
+
+	Phidi_AOUT_HdmiSet(stHdmiAoAttr);
+
+	/* enable AO channle */
+	s32Ret = SAMPLE_COMM_AUDIO_StartAo(AoDev, stHdmiAoAttr.u32ChnCnt, &stHdmiAoAttr, stAoReSampleAttr.enInSampleRate, HI_FALSE, NULL, 0);
+	if (s32Ret != HI_SUCCESS)
+	{
+		LOGE_print("SAMPLE_COMM_AUDIO_StartAo s32Ret:%d", s32Ret);
+		return HI_FAILURE;
+	}
+
+	/* AI to AO channel */
+	s32Ret = SAMPLE_COMM_AUDIO_CreatTrdAiAo(AiDev, AiChn, AoDev, AoChn);
+	if (s32Ret != HI_SUCCESS)
+	{
+		LOGE_print("SAMPLE_COMM_AUDIO_CreatTrdAiAo s32Ret:%d", s32Ret);
+		return HI_FAILURE;
+	}
+
+	return HI_TRUE;
+}
+
+HI_S32 Phidi_VOUT_HDMI_Init(HI_VOID)
+{
+	VPSS_GRP VpssGrp;
+	VPSS_CHN VpssChn_VoHD0 = VPSS_CHN0;
+
+	VO_DEV VoDev;
+	VO_LAYER VoLayer;
+	VO_CHN VoChn;
+	VO_PUB_ATTR_S stVoPubAttr;
+	VO_VIDEO_LAYER_ATTR_S stLayerAttr;
+	SAMPLE_VO_MODE_E enVoMode, enPreVoMode;
+
+	HI_S32 i;
+	HI_S32 s32Ret = HI_SUCCESS;
+	HI_U32 u32WndNum;
+	
+	printf("start vo HD0.\n");
+	VoDev = SAMPLE_VO_DEV_DHD0;
+	VoLayer = SAMPLE_VO_LAYER_VHD0;
+	u32WndNum = 1;
+	enVoMode = VO_MODE_1MUX;
+
+	stVoPubAttr.enIntfSync = VO_OUTPUT_1080P60;
+	stVoPubAttr.enIntfType = VO_INTF_HDMI|VO_INTF_VGA;
+	stVoPubAttr.u32BgColor = 0x0000ffff;
+	s32Ret = SAMPLE_COMM_VO_StartDev(VoDev, &stVoPubAttr);
+	if (HI_SUCCESS != s32Ret)
+	{
+		LOGE_print("Start SAMPLE_COMM_VO_StartDev failed!");
+		return HI_FAILURE;
+	}
+
+	memset(&(stLayerAttr), 0 , sizeof(VO_VIDEO_LAYER_ATTR_S));
+	s32Ret = SAMPLE_COMM_VO_GetWH(stVoPubAttr.enIntfSync, \
+		&stLayerAttr.stImageSize.u32Width, \
+		&stLayerAttr.stImageSize.u32Height, \
+		&stLayerAttr.u32DispFrmRt);
+	if (HI_SUCCESS != s32Ret)
+	{
+		LOGE_print("Start SAMPLE_COMM_VO_GetWH failed!");
+		return HI_FAILURE;
+	}
+
+	stLayerAttr.enPixFormat = SAMPLE_PIXEL_FORMAT;
+	stLayerAttr.stDispRect.s32X 	  = 0;
+	stLayerAttr.stDispRect.s32Y 	  = 0;
+	stLayerAttr.stDispRect.u32Width   = stLayerAttr.stImageSize.u32Width;
+	stLayerAttr.stDispRect.u32Height  = stLayerAttr.stImageSize.u32Height;
+	s32Ret = SAMPLE_COMM_VO_StartLayer(VoLayer, &stLayerAttr);
+	if (HI_SUCCESS != s32Ret)
+	{
+		LOGE_print("Start SAMPLE_COMM_VO_StartLayer failed!");
+		return HI_FAILURE;
+	}
+
+	s32Ret = SAMPLE_COMM_VO_StartChn(VoLayer, enVoMode);
+	if (HI_SUCCESS != s32Ret)
+	{
+		LOGE_print("Start SAMPLE_COMM_VO_StartChn failed!");
+		return HI_FAILURE;
+	}
+
+	/* if it's displayed on HDMI, we should start HDMI */
+	if (stVoPubAttr.enIntfType & VO_INTF_HDMI)
+	{
+		if (HI_SUCCESS != SAMPLE_COMM_VO_HdmiStart(stVoPubAttr.enIntfSync))
+		{
+			LOGE_print("Start SAMPLE_COMM_VO_HdmiStart failed!");
+			return HI_FAILURE;
+		}
+		
+		LOGI_print("HDMI start success.\n");
+	}
+
+	for(i=0;i<u32WndNum;i++)
+	{
+		VoChn = i;
+		VpssGrp = i;
+		
+		s32Ret = SAMPLE_COMM_VO_BindVpss(VoDev,VoChn,VpssGrp,VpssChn_VoHD0);
+		if (HI_SUCCESS != s32Ret)
+		{
+			LOGE_print("Start VO failed!");
+			return HI_FAILURE;
+		}
+	}
+
+	enPreVoMode = enVoMode;
+	VoDev = SAMPLE_VO_DEV_DHD0;
+	VoLayer = SAMPLE_VO_LAYER_VHD0;
+	enVoMode = VO_MODE_1MUX;
+	s32Ret= HI_MPI_VO_SetAttrBegin(VoLayer);
+	if (HI_SUCCESS != s32Ret)
+	{
+		LOGE_print("Start VO failed!");
+		return HI_FAILURE;
+	}
+	
+	s32Ret = SAMPLE_COMM_VO_StopChn(VoLayer, enPreVoMode);
+	if (HI_SUCCESS != s32Ret)
+	{
+		LOGE_print("Start VO failed!");
+		return HI_FAILURE;
+	}
+
+	s32Ret = SAMPLE_COMM_VO_StartChn(VoLayer, enVoMode);
+	if (HI_SUCCESS != s32Ret)
+	{
+		LOGE_print("Start VO failed!");
+		return HI_FAILURE;
+	}
+	s32Ret= HI_MPI_VO_SetAttrEnd(VoLayer);
+	if (HI_SUCCESS != s32Ret)
+	{
+		LOGE_print("Start VO failed!");
+		return HI_FAILURE;
+	}
+
+	return HI_TRUE;
+}
+
 void COMM_VENC_UseStream(VENC_CHN VeChn, PAYLOAD_TYPE_E enType, VENC_STREAM_S *pstStream)
 {
 	//do some thing
@@ -602,6 +815,9 @@ void COMM_VENC_UseStream(VENC_CHN VeChn, PAYLOAD_TYPE_E enType, VENC_STREAM_S *p
 	    {
 	    	HI_U8* data = pstStream->pstPack[i].pu8Addr+pstStream->pstPack[i].u32Offset;
 			HI_S32 len = pstStream->pstPack[i].u32Len-pstStream->pstPack[i].u32Offset;
+			if(total_length + len > MAX_FRAME_LEN)
+				len = MAX_FRAME_LEN - total_length;
+
 			memcpy(&g_frame[total_length], data, len);
 			total_length += len;
 	    }
@@ -629,6 +845,30 @@ void COMM_VENC_UseStream(VENC_CHN VeChn, PAYLOAD_TYPE_E enType, VENC_STREAM_S *p
 	}
 }
 
+void COMM_AENC_UseStream(HI_S32 AeChn, AUDIO_STREAM_S *pstStream)
+{
+	if(AeChn == 0 && gs_enPayloadType == PT_G711A)
+	{
+		if(g_audiohandle != NULL)
+		{
+			frame_info info;
+			info.type = gs_enPayloadType;
+			info.key = 1;
+			info.pts = pstStream->u64TimeStamp;
+			info.length = pstStream->u32Len - 4;
+			
+			int ret = shm_stream_put(g_audiohandle, info, pstStream->pStream + 4, info.length);
+			if(ret != 0)
+			{
+//				LOGE_print("shm_stream_put error");
+			}
+			else
+			{
+//				LOGI_print("shm_stream_put audio info.lenght:%d info.pts:%llu", info.length, info.pts);
+			}
+		}
+	}
+}
 
 /******************************************************************************
 * funciton : get stream from each channels and save them
@@ -669,13 +909,14 @@ HI_VOID* COMM_VENC_GetVencStreamProc()
         s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
         if (s32Ret < 0)
         {
-            LOGE_print("select failed!\n");
+            LOGE_print("select failed!");
             break;
         }
         else if (s32Ret == 0)
         {
-            LOGE_print("get venc stream time out, exit thread\n");
-            break;
+            LOGE_print("get venc stream time out, continue");
+//            break;
+			continue;
         }
         else
         {
@@ -759,16 +1000,16 @@ HI_VOID* COMM_AENC_GetAencStreamProc()
 	HI_S32 AencFd;
    	AENC_CHN AeChn = 0;
    	
-   	AACENC_BufDesc in_buf = { 0 }, out_buf = { 0 };
-	AACENC_InArgs in_args = { 0 };
-	AACENC_OutArgs out_args = { 0 };
-	int in_identifier = IN_AUDIO_DATA;
-	int in_size, in_elem_size;
-	int out_identifier = OUT_BITSTREAM_DATA;
-	int out_size, out_elem_size;
-	void *in_ptr, *out_ptr;
-	//uint8_t outbuf[5120];
-	HI_U8 outbuf[5120];
+//   	AACENC_BufDesc in_buf = { 0 }, out_buf = { 0 };
+//	AACENC_InArgs in_args = { 0 };
+//	AACENC_OutArgs out_args = { 0 };
+//	int in_identifier = IN_AUDIO_DATA;
+//	int in_size, in_elem_size;
+//	int out_identifier = OUT_BITSTREAM_DATA;
+//	int out_size, out_elem_size;
+//	void *in_ptr, *out_ptr;
+//	//uint8_t outbuf[5120];
+//	HI_U8 outbuf[5120];
    		
     AencFd = HI_MPI_AENC_GetFd(AeChn);
     if (AencFd < 0)
@@ -791,13 +1032,14 @@ HI_VOID* COMM_AENC_GetAencStreamProc()
         s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
         if (s32Ret < 0)
         {
-            LOGE_print("select failed!");
+            LOGW_print("select failed!");
             break;
         }
         else if (s32Ret == 0)
         {
-            LOGE_print("get aenc stream time out, exit thread");
-            break;
+            LOGW_print("get aenc stream time out, continue");
+//            break;
+			continue;
         }
         else
         {
@@ -810,31 +1052,46 @@ HI_VOID* COMM_AENC_GetAencStreamProc()
                    		__FUNCTION__, AeChn, s32Ret);
         		}
 
-				in_ptr = stStream.pStream;
-				in_size = stStream.u32Len;
-				in_elem_size = 2;
+//				in_ptr = stStream.pStream;
+//				in_size = stStream.u32Len;
+//				in_elem_size = 2;
 
+//				in_args.numInSamples = in_size/2;
+//				in_buf.numBufs = 1;
+//				in_buf.bufs = &in_ptr;
+//				in_buf.bufferIdentifiers = &in_identifier;
+//				in_buf.bufSizes = &in_size;
+//				in_buf.bufElSizes = &in_elem_size;
 
-				in_args.numInSamples = in_size/2;
-				in_buf.numBufs = 1;
-				in_buf.bufs = &in_ptr;
-				in_buf.bufferIdentifiers = &in_identifier;
-				in_buf.bufSizes = &in_size;
-				in_buf.bufElSizes = &in_elem_size;
+//				out_ptr = outbuf;
+//				out_size = 1024;//sizeof(outbuf);
+//				out_elem_size = 1;
+//				out_buf.numBufs = 1;
+//				out_buf.bufs = &out_ptr;
+//				out_buf.bufferIdentifiers = &out_identifier;
+//				out_buf.bufSizes = &out_size;
+//				out_buf.bufElSizes = &out_elem_size;
 
-				out_ptr = outbuf;
-				out_size = 1024;//sizeof(outbuf);
-				out_elem_size = 1;
-				out_buf.numBufs = 1;
-				out_buf.bufs = &out_ptr;
-				out_buf.bufferIdentifiers = &out_identifier;
-				out_buf.bufSizes = &out_size;
-				out_buf.bufElSizes = &out_elem_size;
-
-				if (aacEncEncode(hAacEncoder, &in_buf, &out_buf, &in_args, &out_args) != AACENC_OK) {
-					LOGE_print("Encoding failed");
-					return NULL;
-				}
+//				if (aacEncEncode(hAacEncoder, &in_buf, &out_buf, &in_args, &out_args) != AACENC_OK) {
+//					LOGE_print("Encoding failed");
+//					return NULL;
+//				}
+				// save audio stream to file 
+//				static FILE* pAAC = NULL;
+//				if(pAAC==NULL) pAAC=fopen("./test.aac","wb");
+//				if(pAAC!=NULL) fwrite(stStream.pStream+4,1,stStream.u32Len-4, pAAC);
+//				int num = 0; 
+//				for(num; num<out_buf.numBufs)
+//				{
+//					void* buff = out_buf.bufs[num];
+//					int len = out_buf.bufSizes[num];
+//					if(pAAC!=NULL) fwrite(buff,1,len, pAAC);
+//				}
+				
+        		//fwrite(stStream.pStream,1,stStream.u32Len, pstAencCtl->pfd);
+        		//fwrite(stStream.pStream,1,stStream.u32Len, fp);
+        		//fwrite(outbuf,1,1024, fp);
+				COMM_AENC_UseStream(AeChn, &stStream);
         	
         		// finally you must release the stream
         		s32Ret = HI_MPI_AENC_ReleaseStream(AeChn, &stStream);
@@ -858,21 +1115,25 @@ HI_VOID* COMM_AENC_GetAencStreamProc()
 int main(int argc, char *argv[])
 {
     HI_S32 s32Ret;
-	
+	g_frame = (unsigned char*)malloc(MAX_FRAME_LEN);
 	g_handle = shm_stream_create("write", "mainstream", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_VIDEO_MAX_SIZE, SHM_STREAM_WRITE);
+	g_audiohandle = shm_stream_create("write", "audiostream", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_AUDIO_MAX_SIZE, SHM_STREAM_WRITE);
 
     s32Ret = Phidi_VENC_Init();
     s32Ret = Phidi_AENC_Init();
-    FDK_AACLC_Init();
+//	FDK_AACLC_Init();
+	Phidi_VOUT_HDMI_Init();
+	Phidi_AOUT_HDMI_Init();
+//	Phidi_HDMI_Start();
 
-    gs_stPara.bThreadStart = HI_TRUE;
-    gs_stPara.s32Cnt = 1;
-    pthread_create(&gs_VencPid, 0, COMM_VENC_GetVencStreamProc, (HI_VOID*)&gs_stPara);  
+    gs_stVPara.bThreadStart = HI_TRUE;
+    gs_stVPara.s32Cnt = 1;
+    pthread_create(&gs_VencPid, 0, COMM_VENC_GetVencStreamProc, (HI_VOID*)&gs_stVPara);  
     
 	s32Ret=HI_MPI_VI_EnableChn(0);
-	//gs_stPara.bThreadStart = HI_TRUE;
-  	//gs_stPara.s32Cnt = 1;
-	//pthread_create(&gs_AencPid, 0, COMM_AENC_GetAencStreamProc, (HI_VOID*)&gs_stPara);  
+	gs_stAPara.bThreadStart = HI_TRUE;
+  	gs_stAPara.s32Cnt = 1;
+	pthread_create(&gs_AencPid, 0, COMM_AENC_GetAencStreamProc, (HI_VOID*)&gs_stAPara);  
 	
     while(1)
 	{
@@ -890,7 +1151,8 @@ int main(int argc, char *argv[])
     SAMPLE_COMM_SYS_Exit();
 
 	shm_stream_destory(g_handle);
-	
+	shm_stream_destory(g_audiohandle);
+	free(g_frame);
     if (HI_SUCCESS == s32Ret)
         LOGW_print("program exit normally!");
     else

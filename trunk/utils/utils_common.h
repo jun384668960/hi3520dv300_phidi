@@ -6,7 +6,7 @@ extern "C"{
 #include <stdint.h>
 #include <pthread.h>
 
-void localtime_mp4name_get(char* filename);
+void localtime_mp4name_get(char* dir, char* filename);
 //获取osd时间戳字符串
 void localtime_string_get(char* tstr);
 //执行控制台指令

@@ -20,18 +20,15 @@ void localtime_string_get(char* tstr)
 		, wday[p->tm_wday],p->tm_hour, p->tm_min, p->tm_sec);
 }
 
-void localtime_mp4name_get(char* filename)
+void localtime_mp4name_get(char* dir, char* filename)
 {
 	time_t timep;
 	struct tm *p;
 	tzset();
 	time(&timep);
 	p=localtime(&timep);
-//	sprintf(filename,"/mnt/sd/%d-%02d-%02d %02d-%02d-%02d.mp4", (1900+p->tm_year),(1+p->tm_mon), p->tm_mday
-//		, p->tm_hour, p->tm_min, p->tm_sec);
-	sprintf(filename,"%04d-%02d-%02d %02d-%02d-%02d.mp4", (1900+p->tm_year),(1+p->tm_mon), p->tm_mday
+	sprintf(filename,"%s/%04d-%02d-%02d %02d-%02d-%02d.mp4", dir, (1900+p->tm_year),(1+p->tm_mon), p->tm_mday
 		, p->tm_hour, p->tm_min, p->tm_sec);
-
 }
 
 int exec_cmd(const char *cmd)   

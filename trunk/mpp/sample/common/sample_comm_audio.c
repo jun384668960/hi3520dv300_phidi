@@ -1539,7 +1539,7 @@ HI_S32 SAMPLE_COMM_AUDIO_StartHdmi(AIO_ATTR_S *pstAioAttr)
     VO_PUB_ATTR_S stPubAttr;
     VO_DEV VoDev = 0;
     
-    stPubAttr.u32BgColor = 0x000000ff;
+    stPubAttr.u32BgColor = 0x0000ffff;
     stPubAttr.enIntfType = VO_INTF_HDMI; 
     stPubAttr.enIntfSync = VO_OUTPUT_1080P30;
 
@@ -1631,11 +1631,11 @@ HI_S32 SAMPLE_COMM_AUDIO_StartAo(AUDIO_DEV AoDevId, HI_S32 s32AoChnCnt,
 	
     if (SAMPLE_AUDIO_HDMI_AO_DEV == AoDevId)
     {
-    #ifdef HI_ACODEC_TYPE_HDMI 
-        pstAioAttr->u32ClkSel = 0;
-        
-        SAMPLE_COMM_AUDIO_StartHdmi(pstAioAttr);
-    #endif
+//    #ifdef HI_ACODEC_TYPE_HDMI 
+//        pstAioAttr->u32ClkSel = 0;
+//        
+//        SAMPLE_COMM_AUDIO_StartHdmi(pstAioAttr);
+//    #endif
     }
 
     s32Ret = HI_MPI_AO_SetPubAttr(AoDevId, pstAioAttr);

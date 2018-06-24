@@ -11,8 +11,9 @@ OBJS := $(wildcard ./*.o ./src/*.o ../utils/*.o)
 
 all: $(BINS)
 
-mp4file:
-	$(CC) main.cpp $(SRCS) -o mp4file $(CFLAG)
+$(BINS):
+	$(CC) main.cpp $(SRCS) -o $(BINS) $(CFLAG)
+	cp $(BINS) ../
 	
 clean:
 	@rm -rf $(BINS)

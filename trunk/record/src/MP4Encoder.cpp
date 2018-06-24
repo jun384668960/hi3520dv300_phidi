@@ -2,7 +2,7 @@
 
 #define MIN_FRAME_SIZE 32
 #define VIDEO_TIME_SCALE 90000
-#define AUDIO_TIME_SCALE 8000
+#define AUDIO_TIME_SCALE 48000
 #define MOVIE_TIME_SCALE VIDEO_TIME_SCALE
 #define PTS2TIME_SCALE(CurPTS, PrevPTS, timeScale) \
 	((MP4Duration)((CurPTS - PrevPTS) * 1.0 / (double)(1e+6) * timeScale))
@@ -94,6 +94,7 @@ MP4EncoderResult MP4Encoder::MP4AddAACTrack(const uint8_t *sData, int nSize)
 MP4EncoderResult MP4Encoder::MP4AddALawTrack(const uint8_t *sData, int nSize)
 {
 	m_audioTrack = MP4AddALawAudioTrack(m_hFile, AUDIO_TIME_SCALE);
+//	m_audioTrack = MP4AddAudioTrack(m_hFile, AUDIO_TIME_SCALE, AUDIO_TIME_SCALE / 8, MP4_ALAW_AUDIO_TYPE);
 
 	if (MP4_INVALID_TRACK_ID == m_audioTrack)
 		return MP4ENCODER_ERROR(MP4ENCODER_E_ADD_AUDIO_TRACK);
