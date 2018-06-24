@@ -1,0 +1,1 @@
+此目录放在sdk的mpp/sample目录可编译

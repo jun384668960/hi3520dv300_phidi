@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "MP4Encoder.h"
 #include "stream_manager.h"
@@ -21,7 +22,13 @@ int fd;
 unsigned char key_array[KEY_NUM] = {0};
 int g_pressed = 0;
 int g_recStart = 0;
-    
+int g_ledPidStop = 0;
+
+struct led_desc{
+	unsigned int  key_val;
+	unsigned char status;
+};
+
 void signal_f(int signum)
 {
     unsigned int i;
@@ -60,6 +67,39 @@ void init_key_sighandle()
     fcntl(fd, F_SETFL, flag|FASYNC);
 }
 
+void* init_led_sighandle(void*)
+{
+	struct led_desc led;
+	
+    int fd = open("/dev/led", O_RDWR);
+    if (fd < 0)
+    {
+        printf("can't open!\n");
+    }
+
+	led.key_val = 0x01;
+	led.status = 1;
+	while(!g_ledPidStop)
+	{
+		if(g_recStart != 0)
+		{
+			if(led.status == 0)
+				led.status = 1;
+			else
+				led.status = 0;
+			write(fd, &led, sizeof(led));
+		}
+		else
+		{
+			led.status = 1;
+			write(fd, &led, sizeof(led));
+		}
+		sleep(1);
+	}
+
+	close(fd);
+}
+
 MP4EncoderResult AddH264Track(MP4Encoder &encoder, uint8_t *sData, int nSize)
 {
 	return encoder.MP4AddH264Track(sData, nSize, g_W, g_H);
@@ -88,7 +128,11 @@ MP4EncoderResult WriteALawData(MP4Encoder &encoder, uint8_t *sData, frame_info i
 
 int main(int argc, const char *argv[])
 {
+	pthread_t led_pid;
+	
 	init_key_sighandle();
+	pthread_create(&led_pid, 0, init_led_sighandle, NULL);
+	
 	shm_stream_t* audio_stream = shm_stream_create("rec_audioread", "audiostream", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_AUDIO_MAX_SIZE, SHM_STREAM_READ);
 	shm_stream_t* main_stream = shm_stream_create("rec_mainread", "mainstream", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_VIDEO_MAX_SIZE, SHM_STREAM_READ);
 	unsigned char* pData = (unsigned char*)malloc(1024*1024);
@@ -213,5 +257,8 @@ int main(int argc, const char *argv[])
 		shm_stream_destory(main_stream);
 	if(audio_stream != NULL)
 		shm_stream_destory(audio_stream);
+
+	g_ledPidStop = 1;
+	pthread_join(led_pid, NULL);
 	return 0;
 }
