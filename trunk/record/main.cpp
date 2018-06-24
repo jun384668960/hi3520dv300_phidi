@@ -13,7 +13,7 @@
 #include "utils_log.h"
 #include "utils_common.h"
 
-#define 	STORAGE_DIR	"/mnt/usb1/"
+#define 	STORAGE_DIR	"/mnt/usb1"
 int g_W = 1280;
 int g_H = 720;
 
@@ -209,7 +209,7 @@ int main(int argc, const char *argv[])
 						ret = shm_stream_get(audio_stream, &info, &frame, &length);
 						if(ret == 0)
 						{
-							if(!vTrackSet)
+							if(!vTrackSet && !aTrackSet)
 							{
 								shm_stream_post(audio_stream);
 							}
@@ -219,6 +219,7 @@ int main(int argc, const char *argv[])
 								{
 									result = AddALawTrack(encoder);
 									LOGW_print("AddALawTrack error:%d", result);
+									aTrackSet = true;
 								}
 								
 								memcpy(pData, frame, length);
@@ -247,6 +248,7 @@ int main(int argc, const char *argv[])
 			}
 			
 			encoder.MP4ReleaseFile();
+			sync();
 			LOGI_print("close recording file %s", filename);
 		}
 		usleep(10*1000);
