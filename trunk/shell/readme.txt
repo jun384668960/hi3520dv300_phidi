@@ -10,5 +10,10 @@ make OSDRV_CROSS=arm-hisiv300-linux CHIP=hi3520dv300 all
    rcS       		--> rootfs_uclibc/etc/init.d/
    mp4file和phidi 	--> rootfs_uclibc/var/bin/
 3. 创建rootfs_uclibc/mnt/usb1目录
-4. 使用mkfs.jffs2生成镜像
+4. 创建设备节点
+   在rootfs_uclibc/dev/目录
+	mknod console c 5 1
+	mknod null c 1 3
+	chmod 666 *
+5. 使用mkfs.jffs2生成镜像
    mkfs.jffs2 -d ./rootfs_uclibc -l –e 0x10000 -o rootfs_hi3520dv300_64k.jffs2
