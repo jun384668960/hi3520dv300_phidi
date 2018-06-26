@@ -16,4 +16,4 @@ make OSDRV_CROSS=arm-hisiv300-linux CHIP=hi3520dv300 all
 	mknod null c 1 3
 	chmod 666 *
 5. 使用mkfs.jffs2生成镜像
-   mkfs.jffs2 -d ./rootfs_uclibc -l –e 0x10000 -o rootfs_hi3520dv300_64k.jffs2
+   mkfs.jffs2 -d ./rootfs_uclibc -l -e 0x10000 -o rootfs_hi3520dv300_64k.jffs2
