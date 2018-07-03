@@ -1,4 +1,4 @@
 #!/bin/sh
 
-umount /mnt/usb1
+umount -fl /mnt/usb1
 echo "umount usb1"
