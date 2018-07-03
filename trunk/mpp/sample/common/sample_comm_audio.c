@@ -728,7 +728,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
         else if (0 == s32Ret) 
         {
             printf("%s: get ai frame select time out\n", __FUNCTION__);
-            break;
+            continue;
         }        
         
         if (FD_ISSET(AiFd, &read_fds))

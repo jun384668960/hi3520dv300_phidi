@@ -30,6 +30,7 @@ extern "C"{
 #include "mpi_vb.h"
 #include "mpi_aenc.h"
 #include "mpi_ai.h"
+#include "mpi_ao.h"
 #include "aacenc_lib.h"
 
 #include "utils_log.h"
@@ -170,7 +171,7 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
     stAioAttr.u32EXFlag = 1;															//扩展成16 位，8bit到16bit 扩展标志只对AI采样精度为8bit 时有效
     stAioAttr.u32FrmNum = 30;
     stAioAttr.u32PtNumPerFrm = 320;
-    stAioAttr.u32ChnCnt = 1;										//stereo mode must be 2 
+    stAioAttr.u32ChnCnt = 2;										//stereo mode must be 2 
     stAioAttr.u32ClkChnCnt   = 2;
     stAioAttr.u32ClkSel = 0;
 		
@@ -638,7 +639,7 @@ HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
 {
     HI_S32 s32Ret;
     AUDIO_DEV   AiDev = SAMPLE_AUDIO_AI_DEV;
-    AI_CHN      AiChn = 0;
+    AI_CHN      AiChn = 1;
     AUDIO_DEV   AoDev = SAMPLE_AUDIO_HDMI_AO_DEV;
     AO_CHN      AoChn = 0;
 
@@ -661,15 +662,35 @@ HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
 	stAoReSampleAttr.enInSampleRate = AUDIO_SAMPLE_RATE_32000;
 	stAoReSampleAttr.enOutSampleRate = AUDIO_SAMPLE_RATE_48000;
 
+	s32Ret =HI_MPI_AI_EnableChn(AiDev, AiChn);
+	if (s32Ret)
+	{
+		LOGE_print("HI_MPI_AI_EnableChn(%d,%d) failed with %#x", AiDev, AiChn, s32Ret);
+		return -1;	  
+	}
+		
 	Phidi_AOUT_HdmiSet(stHdmiAoAttr);
 
-	/* enable AO channle */
-	s32Ret = SAMPLE_COMM_AUDIO_StartAo(AoDev, stHdmiAoAttr.u32ChnCnt, &stHdmiAoAttr, stAoReSampleAttr.enInSampleRate, HI_FALSE, NULL, 0);
-	if (s32Ret != HI_SUCCESS)
-	{
-		LOGE_print("SAMPLE_COMM_AUDIO_StartAo s32Ret:%d", s32Ret);
-		return HI_FAILURE;
-	}
+    s32Ret = HI_MPI_AO_SetPubAttr(AoDev, &stHdmiAoAttr);
+    if (HI_SUCCESS != s32Ret)
+    {
+        LOGE_print("HI_MPI_AO_SetPubAttr(%d) failed with %#x!", AoDev, s32Ret);
+        return HI_FAILURE;
+    }
+
+    s32Ret = HI_MPI_AO_Enable(AoDev);
+    if (HI_SUCCESS != s32Ret)
+    {
+        LOGE_print("HI_MPI_AO_Enable(%d) failed with %#x!", AoDev, s32Ret);
+        return HI_FAILURE;
+    }
+
+	s32Ret = HI_MPI_AO_EnableChn(AoDev, AoChn);
+    if (HI_SUCCESS != s32Ret)
+    {
+        LOGE_print("HI_MPI_AO_EnableChn(%d) failed with %#x!", AoChn, s32Ret);
+        return HI_FAILURE;
+    }
 
 	/* AI to AO channel */
 	s32Ret = SAMPLE_COMM_AUDIO_CreatTrdAiAo(AiDev, AiChn, AoDev, AoChn);
@@ -706,7 +727,7 @@ HI_S32 Phidi_VOUT_HDMI_Init(HI_VOID)
 
 	stVoPubAttr.enIntfSync = VO_OUTPUT_1080P60;
 	stVoPubAttr.enIntfType = VO_INTF_HDMI|VO_INTF_VGA;
-	stVoPubAttr.u32BgColor = 0x0000ffff;
+	stVoPubAttr.u32BgColor = 0x00000000;
 	s32Ret = SAMPLE_COMM_VO_StartDev(VoDev, &stVoPubAttr);
 	if (HI_SUCCESS != s32Ret)
 	{
