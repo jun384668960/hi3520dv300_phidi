@@ -14,8 +14,8 @@
 #include "utils_common.h"
 
 #define 	STORAGE_DIR	"/mnt/usb1"
-int g_W = 1280;
-int g_H = 720;
+int g_W = 1920;
+int g_H = 1080;
 
 #define KEY_NUM 1
 int fd;
@@ -103,8 +103,6 @@ void* init_led_sighandle(void*)
 MP4EncoderResult AddH264Track(MP4Encoder &encoder, uint8_t *sData, int nSize)
 {
 	return encoder.MP4AddH264Track(sData, nSize, g_W, g_H);
-
-	return MP4ENCODER_ERROR(MP4ENCODER_E_ADD_VIDEO_TRACK);
 }
 
 MP4EncoderResult AddALawTrack(MP4Encoder &encoder)
@@ -166,6 +164,7 @@ int main(int argc, const char *argv[])
 				int ret = shm_stream_get(main_stream, &info, &frame, &length);
 				if(ret == 0)
 				{
+//					LOGI_print("shm_stream_get viedeo info.lenght:%d info.pts:%llu", info.length, info.pts);
 					//如果还没有取得I帧，并且当前非I帧
 					if(!Iwait && info.key == 1)
 					{
@@ -209,6 +208,7 @@ int main(int argc, const char *argv[])
 						ret = shm_stream_get(audio_stream, &info, &frame, &length);
 						if(ret == 0)
 						{
+//							LOGI_print("shm_stream_get audio info.lenght:%d info.pts:%llu", info.length, info.pts);
 							if(!vTrackSet && !aTrackSet)
 							{
 								shm_stream_post(audio_stream);
@@ -243,7 +243,7 @@ int main(int argc, const char *argv[])
 				}
 				else
 				{
-					usleep(5*1000);
+					usleep(1000);
 				}
 			}
 			
