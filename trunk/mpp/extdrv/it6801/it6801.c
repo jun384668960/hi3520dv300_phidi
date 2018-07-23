@@ -78,6 +78,13 @@ typedef enum vin_resolution_id {
 } vin_resolution_id_e;
 
 
+static bool it6801_is_power_5v_detected(void)
+{
+	unsigned char mDataIn;	
+	i2c_read_byte(0x90, 0x0A, 1, &mDataIn, 0);
+	bool is_power_5V_detected = mDataIn & 0x1;
+	return is_power_5V_detected;
+}
 static vin_resolution_id_e it6801_vin_get_resolution(void)
 {
 	int width  = it6801_vin_get_width();
@@ -154,6 +161,9 @@ int it6801_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     void __user *argp = (void __user *)arg;
 		unsigned char mDataIn;
+	if (false == it6801_is_power_5v_detected()) {
+		return -1;
+	}
 		
 	if(cmd == 0x10)
 	{
@@ -178,7 +188,7 @@ int it6801_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	if(cmd == 0x18)
 	{
 		i2c_read_byte(0x90, 0x0A, 1, &mDataIn, 0);
-		//printk("reg 0x0A: 0x%x\n",mDataIn); 
+		printk("reg 0x0A: 0x%x\n",mDataIn); 
 		if((mDataIn&0x1))  //5V detect
 			return 1;
 	}

@@ -504,6 +504,7 @@ static _CODE struct IT6802_REG_INI  IT6802_HDMI_INIT_TABLE[] = {
 	{REG_RX_04D,	0xFF,	0xA6},	//Reg4D Reg_P1_WCLKValidNum must set to 0xA6 for andrew suggestion 2014-0403
 //FIX_ID_030 xxxxx
 	{REG_RX_067,	0x80,	0x00},	//Reg67[7] disable HW CSCSel
+	{REG_RX_077,	0xF0,	0x80},	//Reg77[7:4]=’1000’ then audio output configure as I2S mode.(Pin_41 is MCLK, Pin_45 is WS,Pin_46 is SCK).
 
 	{REG_RX_07A,B_CTS_RES,B_CTS_RES},
 
