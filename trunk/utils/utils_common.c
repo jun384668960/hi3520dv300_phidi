@@ -33,6 +33,9 @@ void localtime_mp4name_get(char* dir, char* filename)
 
 int exec_cmd(const char *cmd)   
 {   
+	if(cmd == NULL)
+		return -1;
+
     FILE *fp = NULL;
     if((fp = popen(cmd, "r")) == NULL)
     {
@@ -43,6 +46,40 @@ int exec_cmd(const char *cmd)
 	
 	return 0;
 } 
+
+//execute shell command
+int exec_cmd_ex(const char *cmd, char* res, int max)
+{   
+	if(cmd == NULL || res == NULL || max <= 0)
+		return -1;
+	
+    FILE *pp = popen(cmd, "r");
+    if(!pp) 
+	{
+        printf("error, cannot popen cmd: %s\n", cmd);
+        return -1;
+    }
+
+	int length;
+    char tmp[1024] = {0};
+	
+	length = max;
+	if(max > 1024) length = 1024;
+		
+    while(fgets(tmp, length, pp) != NULL) 
+	{
+        if(tmp[length-1] == '\n') {
+            tmp[length-1] = '\0';
+        }
+
+        strcpy(res, tmp);
+    }
+
+    pclose(pp);
+
+    return strlen(res);
+}
+
 
 unsigned long long get_system_tf_freeKb(char* dir)
 {

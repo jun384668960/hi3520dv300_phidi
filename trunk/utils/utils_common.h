@@ -11,6 +11,8 @@ void localtime_mp4name_get(char* dir, char* filename);
 void localtime_string_get(char* tstr);
 //执行控制台指令
 int exec_cmd(const char *cmd);		
+//执行控制台指令,返回字符串
+int exec_cmd_ex(const char *cmd, char* res, int max);
 //获取系统剩余内存
 unsigned long get_system_mem_freeKb();		
 //获取目录剩余存储空间
