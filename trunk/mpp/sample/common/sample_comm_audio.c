@@ -784,6 +784,8 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
     }
     
     pstAiCtl->bStart = HI_FALSE;
+	printf("%s: SAMPLE_COMM_AUDIO_DestoryTrdAi(%d, %d) done \n",\
+          __FUNCTION__, pstAiCtl->AiDev, pstAiCtl->AiChn);
     return NULL;
 }
 
