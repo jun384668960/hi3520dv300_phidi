@@ -6,29 +6,39 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "MP4Encoder.h"
 #include "stream_manager.h"
 #include "stream_define.h"
 
 #include "utils_log.h"
 #include "utils_common.h"
+#include "mp4_muxer.h"
 
-#define 	STORAGE_DIR	"/mnt/usb1"
-int g_W = 1920;
-int g_H = 1080;
+#include "nalu_utils.hh"
+#include "h264_stream.h"
+
+int g_rec_time = 60*60*1000;
 
 #define KEY_NUM 1
 int fd;
 unsigned char key_array[KEY_NUM] = {0};
-int g_pressed = 0;
+int g_pressed = 0;			
+int g_mounted = 0;			//是否mount成功U盘
 int g_recStart = 0;
+int g_recStopping = 0;
 int g_ledPidStop = 0;
+
+#define STORAGE_DIR "/mnt/usb1/"
 
 struct led_desc{
 	unsigned int  key_val;
 	unsigned char status;
 };
 
+int is_usb_mount()
+{
+	char result[1024] = {0};
+	return exec_cmd_ex("cat /proc/mounts | grep /mnt/usb1", result, 1024);
+}
 void signal_f(int signum)
 {
     unsigned int i;
@@ -70,6 +80,7 @@ void init_key_sighandle()
 void* init_led_sighandle(void*)
 {
 	struct led_desc led;
+	int	   	stop_sec = 0;
 	
     int fd = open("/dev/led", O_RDWR);
     if (fd < 0)
@@ -80,48 +91,58 @@ void* init_led_sighandle(void*)
 	led.key_val = 0x01;
 	led.status = 1;
 	while(!g_ledPidStop)
-	{
-		if(g_recStart != 0)
+	{	
+		if(is_usb_mount())
 		{
-			if(led.status == 0)
-				led.status = 1;
+			g_mounted = 1;
+			if(g_recStart != 0)
+			{
+				if(led.status == 0)
+					led.status = 1;
+				else
+					led.status = 0;
+				write(fd, &led, sizeof(led));
+			}
 			else
-				led.status = 0;
-			write(fd, &led, sizeof(led));
+			{
+				if(g_recStopping == 1)
+				{
+					if(led.status == 0)
+						led.status = 1;
+					else
+						led.status = 0;
+					write(fd, &led, sizeof(led));
+
+					usleep(450*1000);
+					
+					stop_sec+=1;
+					if(stop_sec > 10)
+					{
+						g_recStopping = 0;
+						stop_sec = 0;
+					}
+					continue;
+				}
+				else
+				{
+					led.status = 0;
+					write(fd, &led, sizeof(led));
+				}
+			}
 		}
 		else
 		{
+			g_recStopping = 0;
+			stop_sec = 0;
+			g_mounted = 0;
 			led.status = 1;
 			write(fd, &led, sizeof(led));
 		}
+		
 		sleep(1);
 	}
 
 	close(fd);
-}
-
-MP4EncoderResult AddH264Track(MP4Encoder &encoder, uint8_t *sData, int nSize)
-{
-	return encoder.MP4AddH264Track(sData, nSize, g_W, g_H);
-}
-
-MP4EncoderResult AddALawTrack(MP4Encoder &encoder)
-{
-	return encoder.MP4AddALawTrack(NULL, 0);
-}
-
-MP4EncoderResult WriteH264Data(MP4Encoder &encoder, uint8_t *sData, frame_info info)
-{
-	MP4EncoderResult result;
-
-	return encoder.MP4WriteH264Data(sData, info.length, info.pts);
-}
-
-MP4EncoderResult WriteALawData(MP4Encoder &encoder, uint8_t *sData, frame_info info)
-{
-	MP4EncoderResult result;
-
-	return encoder.MP4WriteALawData(sData, info.length, info.pts);
 }
 
 int main(int argc, const char *argv[])
@@ -136,26 +157,22 @@ int main(int argc, const char *argv[])
 	unsigned char* pData = (unsigned char*)malloc(1024*1024);
 	while(1)
 	{
-		while(g_recStart)
+		while(g_recStart && g_mounted == 1)
 		{
 			bool Iwait = false;
 			bool IwaitOver = false;
 			bool vTrackSet = false;
 			bool aTrackSet = false;
-			MP4EncoderResult result;
-			MP4Encoder encoder;
+			int  result;
+			int  rec_ref = 0;
+			
 			//根据当前时间取得文件名
 			char filename[64] = {0};
 			localtime_mp4name_get(STORAGE_DIR, filename);
 			LOGI_print("start recording file %s", filename);
 			
-			result = encoder.MP4CreateFile(filename);
-			if(result != MP4ENCODER_ENONE)
-			{
-				LOGE_print("MP4CreateFile error");
-				g_recStart = ~g_recStart;
-				continue;
-			}
+			MP4Mux_Open(filename);
+			
 			while(g_recStart)
 			{
 				frame_info info;
@@ -183,23 +200,52 @@ int main(int argc, const char *argv[])
 						Iwait = true;
 						if(!vTrackSet)
 						{
-							result = AddH264Track(encoder, pData, length);
-							LOGW_print("AddH264Track error:%d length:%d", result, length);
+							AM_VIDEO_INFO pvInfo;
+							AM_AUDIO_INFO paInfo;
+							
+							paInfo.chunkSize = 1024;
+							paInfo.format = MF_AAC;
+							paInfo.pktPtsIncr = 1024 * 90000 / 48000;
+							paInfo.sampleRate = 48000;
+							paInfo.sampleSize = 16;         
+							paInfo.channels = 1;
+							
+							MP4Mux_GetVideoInfo(pData, length, 60, &pvInfo);
+
+							NALU_t nalu;
+							get_annexb_nalu(pData, length, &nalu);
+							
+							h264_stream_t* h4 = h264_new();
+							h264_configure_parse(h4, nalu.buf, nalu.len, H264_SPS);
+							printf("width:%d, height:%d framerate:%f\n", h4->info->width, h4->info->height, h4->info->max_framerate);
+
+							pvInfo.rate = 60;
+							pvInfo.width = h4->info->width;
+							pvInfo.height = h4->info->height;
+							h264_free(h4);
+							
+							MP4Mux_OnInfo(&pvInfo, &paInfo);
+
 							vTrackSet = true;
+							aTrackSet = true;
+
+							rec_ref = info.pts/1000;
 						}
 							
-						result = WriteH264Data(encoder, pData, info);
+						int rec_time = info.pts/1000 - rec_ref;
+//						LOGI_print("record time:%d max:%d", rec_time, g_rec_time);
+						if(info.key == 5 && rec_time > g_rec_time)
+						{
+							LOGW_print("record time:%d > max:%d", rec_time, g_rec_time);
+							break;
+						}
+						
+						result = MP4Mux_WriteVideoData(pData, length, info.pts/1000);
 						shm_stream_post(main_stream);
-						if(result == MP4ENCODER_ERROR(MP4ENCODER_WARN_RECORD_OVER))
+						if(result != 0)
 						{	
 							//直到下一个I帧出现
 							IwaitOver = true;
-						}
-						else if(result != MP4ENCODER_ENONE)
-						{
-							LOGW_print("WriteH264Data error:%d", result);
-							g_recStart = ~g_recStart;
-							break;
 						}
 					}
 					
@@ -215,25 +261,10 @@ int main(int argc, const char *argv[])
 							}
 							else
 							{
-								if(!aTrackSet)
-								{
-									result = AddALawTrack(encoder);
-									LOGW_print("AddALawTrack error:%d", result);
-									aTrackSet = true;
-								}
-								
 								memcpy(pData, frame, length);
-								result = WriteALawData(encoder, pData, info);
+								MP4Mux_WriteAudioData(pData, length, info.pts/1000);
 								shm_stream_post(audio_stream);
-								if(result != MP4ENCODER_ENONE 
-									&& result != MP4ENCODER_ERROR(MP4ENCODER_WARN_RECORD_OVER))
-								{
-									LOGW_print("WriteALawData error:%d %d", result, shm_stream_remains(audio_stream));
-									g_recStart = ~g_recStart;
-									break;
-								}
 							}
-
 						}
 						else
 						{
@@ -247,7 +278,8 @@ int main(int argc, const char *argv[])
 				}
 			}
 			
-			encoder.MP4ReleaseFile();
+			MP4Mux_Close();
+			g_recStopping = 1;
 			sync();
 			LOGI_print("close recording file %s", filename);
 		}
