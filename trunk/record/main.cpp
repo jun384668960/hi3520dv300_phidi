@@ -15,6 +15,7 @@
 
 #include "nalu_utils.hh"
 #include "h264_stream.h"
+#include <sys/ioctl.h>
 
 int g_rec_time = 60*60*1000;
 
@@ -34,6 +35,42 @@ struct led_desc{
 	unsigned char status;
 };
 
+int is_hdmi_in()
+{
+	int hdmi_mode;
+	int fd = open("/dev/it6801", 0);
+    if(fd < 0)
+    {
+        LOGE_print("Open it6801 error!");
+		return 0;
+    }
+	else
+	{	
+		hdmi_mode = ioctl(fd, 0x10, 0);
+		if (hdmi_mode < 0)
+	 	{
+    		LOGE_print(" VI_SCAN_INTERLACED read error!");
+			close(fd);
+			return 0;
+		}
+		if(hdmi_mode > 0){ 
+			hdmi_mode = 5;		//stViDevAttr.enScanMode = VI_SCAN_INTERLACED;
+			LOGI_print("interlace mode");    
+			close(fd);
+			return 0;
+		
+		} else {
+			hdmi_mode = ioctl(fd, 0x12, 0);
+		}	
+    }
+    close(fd);
+
+	LOGI_print("resolution mode : %d",hdmi_mode); 
+	if(hdmi_mode == -1)
+		return 0;
+	else
+		return 1;
+}
 int is_usb_mount()
 {
 	char result[1024] = {0};
@@ -52,7 +89,7 @@ void signal_f(int signum)
 		}
 		else
 		{
-			if(g_pressed == 1)
+			if(g_pressed == 1 && is_hdmi_in() == 1)
 			{
 				g_recStart = ~g_recStart;
 			}

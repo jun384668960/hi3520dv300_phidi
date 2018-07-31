@@ -130,30 +130,30 @@ int switch_vi_resolution()
     }
     close(g_fd);
 
-	LOGI_print("resolution mode : %d",hdmi_mode); 
+//	LOGI_print("resolution mode : %d",hdmi_mode); 
 	if(hdmi_mode == 1) {
 		HDMI_W = 1920;
     	HDMI_H = 1080;  
-    	LOGI_print("resolution : 1080P");
+//    	LOGI_print("resolution : 1080P");
     }
 	else if(hdmi_mode == 2) {   	//720P
 		HDMI_W = 1280;
 	    HDMI_H = 720;
-	    LOGI_print("resolution : 720P"); 
+//	    LOGI_print("resolution : 720P"); 
     }	
     else if(hdmi_mode == 3) {			//576P
 		HDMI_W = 720;
         HDMI_H = 576;
-        LOGI_print("resolution : 576P");			
+//        LOGI_print("resolution : 576P");			
     }
     else if(hdmi_mode == 4) {			//480P
  		HDMI_W = 720;
 		HDMI_H = 480;   			
-		LOGI_print("resolution : 480P");
+//		LOGI_print("resolution : 480P");
     }	
     else
     {
-    	LOGI_print("interlace mode");    
+//    	LOGI_print("interlace mode");    
 		return -1;
 	}
 
@@ -668,7 +668,6 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
 	stAencAttr.u32PtNumPerFrm	= 1024;
 	stAencAttr.pValue 		= &stAencLpcm;
 
-	LOGE_print("================");
     //start Audio Encode
     /* create aenc chn*/
     s32Ret = HI_MPI_AENC_CreateChn(AeChn, &stAencAttr);
