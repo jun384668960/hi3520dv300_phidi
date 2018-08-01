@@ -28,7 +28,7 @@ int g_recStart = 0;
 int g_recStopping = 0;
 int g_ledPidStop = 0;
 
-#define STORAGE_DIR "/mnt/usb1/"
+#define STORAGE_DIR "/mnt/root/" // "/mnt/usb1/"	// "/mnt/root/"
 
 struct led_desc{
 	unsigned int  key_val;
@@ -209,7 +209,8 @@ int main(int argc, const char *argv[])
 			LOGI_print("start recording file %s", filename);
 			
 			MP4Mux_Open(filename);
-			
+
+			shm_stream_sync(main_stream);
 			while(g_recStart)
 			{
 				frame_info info;
@@ -237,6 +238,8 @@ int main(int argc, const char *argv[])
 						Iwait = true;
 						if(!vTrackSet)
 						{
+							shm_stream_sync(audio_stream);
+							
 							AM_VIDEO_INFO pvInfo;
 							AM_AUDIO_INFO paInfo;
 							
@@ -245,7 +248,7 @@ int main(int argc, const char *argv[])
 							paInfo.pktPtsIncr = 1024 * 90000 / 48000;
 							paInfo.sampleRate = 48000;
 							paInfo.sampleSize = 16;         
-							paInfo.channels = 1;
+							paInfo.channels = 2;
 							
 							MP4Mux_GetVideoInfo(pData, length, 60, &pvInfo);
 
