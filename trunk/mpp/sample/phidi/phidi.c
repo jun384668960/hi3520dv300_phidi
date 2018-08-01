@@ -857,7 +857,7 @@ HI_S32 Phidi_VOUT_HDMI_UnInit(HI_VOID)
 	SAMPLE_COMM_VO_StopDev(VoDev);
 	
 	SAMPLE_COMM_VO_HdmiStop();
-	LOGI_print("===========");
+
 	return HI_TRUE;
 }
 
