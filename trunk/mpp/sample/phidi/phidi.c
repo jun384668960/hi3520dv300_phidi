@@ -603,7 +603,7 @@ HI_S32 Phidi_VENC_UnInit(HI_VOID)
 HI_S32 Phidi_AENC_Init(HI_VOID)
 {
 	HI_S32 		s32Ret = 0;
-	AUDIO_DEV   AiDev = 0;
+	AUDIO_DEV   AiDev = PHIDI_AUDIO_AI_DEV;
 	AI_CHN      AiChn	= 0;
 	AENC_CHN    AeChn = 0;
 		
@@ -705,7 +705,7 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
 HI_S32 Phidi_AENC_UnInit(HI_VOID)
 {
 	HI_S32 		s32Ret = 0;
-	AUDIO_DEV   AiDev = 0;
+	AUDIO_DEV   AiDev = PHIDI_AUDIO_AI_DEV;
 	AI_CHN      AiChn	= 0;
 	AENC_CHN    AeChn = 0;
 
@@ -864,9 +864,9 @@ HI_S32 Phidi_VOUT_HDMI_UnInit(HI_VOID)
 HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
 {
     HI_S32 s32Ret;
-    AUDIO_DEV   AiDev = SAMPLE_AUDIO_AI_DEV;
+    AUDIO_DEV   AiDev = PHIDI_AUDIO_AI_DEV;
     AI_CHN      AiChn = 1;
-    AUDIO_DEV   AoDev = SAMPLE_AUDIO_HDMI_AO_DEV;
+    AUDIO_DEV   AoDev = PHIDI_AUDIO_AO_DEV;
     AO_CHN      AoChn = 0;
 
     AIO_ATTR_S stHdmiAoAttr;
@@ -932,9 +932,9 @@ HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
 HI_S32 Phidi_AOUT_HDMI_UnInit(HI_VOID)
 {
     HI_S32 s32Ret;
-    AUDIO_DEV   AiDev = SAMPLE_AUDIO_AI_DEV;
+    AUDIO_DEV   AiDev = PHIDI_AUDIO_AI_DEV;
     AI_CHN      AiChn = 1;
-    AUDIO_DEV   AoDev = SAMPLE_AUDIO_HDMI_AO_DEV;
+    AUDIO_DEV   AoDev = PHIDI_AUDIO_AO_DEV;
     AO_CHN      AoChn = 0;
 
 	SAMPLE_COMM_AUDIO_DestoryTrdAi(AiDev, AiChn);
