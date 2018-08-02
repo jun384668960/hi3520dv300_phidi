@@ -614,7 +614,7 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
     stAioAttr.enSamplerate = AUDIO_SAMPLE_RATE_48000;		
 	stAioAttr.enBitwidth  = AUDIO_BIT_WIDTH_16;						
 	stAioAttr.enWorkmode = AIO_MODE_I2S_SLAVE;
-    stAioAttr.enSoundmode = AUDIO_SOUND_MODE_MONO;
+    stAioAttr.enSoundmode = AUDIO_SOUND_MODE_STEREO;
     stAioAttr.u32EXFlag = 1;										//扩展成16 位，8bit到16bit 扩展标志只对AI采样精度为8bit 时有效
     stAioAttr.u32FrmNum = 30;
     stAioAttr.u32PtNumPerFrm = 1024;//SAMPLE_AUDIO_PTNUMPERFRM;
@@ -865,7 +865,7 @@ HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
 {
     HI_S32 s32Ret;
     AUDIO_DEV   AiDev = PHIDI_AUDIO_AI_DEV;
-    AI_CHN      AiChn = 1;
+    AI_CHN      AiChn = 0;
     AUDIO_DEV   AoDev = PHIDI_AUDIO_AO_DEV;
     AO_CHN      AoChn = 0;
 
@@ -875,7 +875,7 @@ HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
 	stHdmiAoAttr.enSamplerate   = AUDIO_SAMPLE_RATE_48000;
     stHdmiAoAttr.enBitwidth     = AUDIO_BIT_WIDTH_16;
     stHdmiAoAttr.enWorkmode     = AIO_MODE_I2S_MASTER;
-    stHdmiAoAttr.enSoundmode    = AUDIO_SOUND_MODE_MONO;
+    stHdmiAoAttr.enSoundmode    = AUDIO_SOUND_MODE_STEREO;
     stHdmiAoAttr.u32EXFlag      = 1;
     stHdmiAoAttr.u32FrmNum      = 30;
     stHdmiAoAttr.u32PtNumPerFrm = SAMPLE_AUDIO_PTNUMPERFRM;
