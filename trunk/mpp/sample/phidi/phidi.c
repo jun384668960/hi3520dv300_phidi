@@ -46,6 +46,28 @@ VIDEO_NORM_E gs_enNorm = VIDEO_ENCODING_MODE_NTSC;
 
 #define MAX_FRAME_LEN (1024*1024)
 
+typedef enum viHDMI_STATUS
+{
+	VI_HDMI_READY,
+	VI_HDMI_EMPTY,
+	VI_HDMI_CHANGE_RES,
+	VI_HDMI_CHANGE_EMPTY,
+};
+
+typedef enum VI_RESOLUTION_E
+{
+	VI_RESOLUTION_1920X1080	= 1,
+	VI_RESOLUTION_1280X1024	= 5,
+	VI_RESOLUTION_1280X800	= 6,
+	VI_RESOLUTION_1280X768	= 7,
+	VI_RESOLUTION_1280X720	= 2,
+	VI_RESOLUTION_720X576	= 3,
+	VI_RESOLUTION_720X480	= 4,
+	VI_RESOLUTION_640X480	= 8,
+	VI_RESOLUTION_UNKOWN	= -1,
+};
+
+
 static PAYLOAD_TYPE_E gs_enPayloadType = PT_LPCM;//PT_AAC;//PT_G711A;//PT_LPCM;
 static SAMPLE_VENC_GETSTREAM_PARA_S gs_stVPara;
 static SAMPLE_VENC_GETSTREAM_PARA_S gs_stAPara;
@@ -55,7 +77,6 @@ static shm_stream_t* 	g_handle = NULL;
 static shm_stream_t* 	g_audiohandle = NULL;
 static unsigned char* 	g_frame = NULL;
 static unsigned int		g_phidi_on = 0;
-static unsigned int		g_phidi_reset = 1;
 
 int 	HDMImode = 0;
 HI_U32 	HDMI_H,HDMI_W;
@@ -107,82 +128,131 @@ int switch_vi_resolution()
     if(g_fd < 0)
     {
         LOGE_print("Open it6801 error!");
-		return -1;
+		return VI_HDMI_EMPTY;
     }
 	else
 	{	
 		hdmi_mode = ioctl(g_fd, 0x10, 0);
+		LOGI_print("1111resolution mode : %d",hdmi_mode); 
 		if (hdmi_mode < 0)
 	 	{
     		LOGE_print(" VI_SCAN_INTERLACED read error!");
 			close(g_fd);
-			return -1;
+			if( HDMImode != 0)
+			{
+				HDMImode = 0;
+				return VI_HDMI_CHANGE_EMPTY;
+			}
+			else
+			{
+				return VI_HDMI_EMPTY;
+			}
 		}
-		if(hdmi_mode > 0){ 
-			hdmi_mode = 5;		//stViDevAttr.enScanMode = VI_SCAN_INTERLACED;
-			LOGI_print("interlace mode");    
-			close(g_fd);
-			return -1;
-		
-		} else {
+		else 
+		{
 			hdmi_mode = ioctl(g_fd, 0x12, 0);
-		}	
+		}
     }
     close(g_fd);
 
-//	LOGI_print("resolution mode : %d",hdmi_mode); 
-	if(hdmi_mode == 1) {
+	LOGI_print("2222resolution mode : %d",hdmi_mode); 
+	if(hdmi_mode == VI_RESOLUTION_1920X1080) {
 		HDMI_W = 1920;
     	HDMI_H = 1080;  
-//    	LOGI_print("resolution : 1080P");
     }
-	else if(hdmi_mode == 2) {   	//720P
+	else if(HDMImode == VI_RESOLUTION_1280X1024) 
+	{
+		HDMI_W = 1280;
+	    HDMI_H = 1024;	
+	}
+	else if(HDMImode == VI_RESOLUTION_1280X800) 
+	{
+		HDMI_W = 1280;
+	    HDMI_H = 800;
+    }
+	else if(HDMImode == VI_RESOLUTION_1280X768) 
+	{
+		HDMI_W = 1280;
+	    HDMI_H = 768;
+    }
+	else if(hdmi_mode == VI_RESOLUTION_1280X720) {   	//720P
 		HDMI_W = 1280;
 	    HDMI_H = 720;
-//	    LOGI_print("resolution : 720P"); 
     }	
-    else if(hdmi_mode == 3) {			//576P
+    else if(hdmi_mode == VI_RESOLUTION_720X576) {			//576P
 		HDMI_W = 720;
         HDMI_H = 576;
-//        LOGI_print("resolution : 576P");			
     }
-    else if(hdmi_mode == 4) {			//480P
+    else if(hdmi_mode == VI_RESOLUTION_720X480) {			//480P
  		HDMI_W = 720;
 		HDMI_H = 480;   			
-//		LOGI_print("resolution : 480P");
     }	
+	else if(HDMImode == VI_RESOLUTION_640X480)
+	{
+		HDMI_W = 640;
+		HDMI_H = 480; 
+	}
     else
     {
 //    	LOGI_print("interlace mode");    
-		return -1;
+		if( HDMImode != 0)
+		{
+			HDMImode = 0;
+			return VI_HDMI_CHANGE_EMPTY;
+		}
+		else
+		{
+			return VI_HDMI_EMPTY;
+		}
 	}
 
-	if(hdmi_mode != HDMImode)
+	if(hdmi_mode != HDMImode && HDMImode != 0)
 	{
 		HDMImode = hdmi_mode;
-		return 1;
+		return VI_HDMI_CHANGE_RES;
 	}
 	else
 	{
-		return 0;
+		HDMImode = hdmi_mode;
+		return VI_HDMI_READY;
 	}
 	
 }
 
 int switch_hdmi_resolution()
 {
-	if(HDMImode == 2) 
-	{//720P
-		return VO_OUTPUT_720P60;
-    }	
-    else if(HDMImode == 3) 
-	{//576P
-		return VO_OUTPUT_480P60;			
+	if(HDMImode == VI_RESOLUTION_1920X1080)
+	{
+		return VO_OUTPUT_1080P60;	
+	}
+	else if(HDMImode == VI_RESOLUTION_1280X1024) 
+	{
+		return VO_OUTPUT_1280x1024_60;			
+	}
+	else if(HDMImode == VI_RESOLUTION_1280X800) 
+	{
+		return VO_OUTPUT_1280x800_60;
     }
-    else if(HDMImode == 4) 
-	{//480P
+	else if(HDMImode == VI_RESOLUTION_1280X768) 
+	{
+		return VO_OUTPUT_1366x768_60;
+    }
+	else if(HDMImode == VI_RESOLUTION_1280X720) 
+	{
+		return VO_OUTPUT_720P60;
+    }
+    else if(HDMImode == VI_RESOLUTION_720X576) 
+	{
+		return VO_OUTPUT_576P50;			
+    }
+    else if(HDMImode == VI_RESOLUTION_720X480) 
+	{
  		return VO_OUTPUT_480P60;
     }
+	else if(HDMImode == VI_RESOLUTION_640X480)
+	{
+		return VO_OUTPUT_480P60;
+	}
 	else
 	{
 		return VO_OUTPUT_1080P60;
@@ -658,7 +728,7 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
   	//step 3: start Aenc
   	
     AENC_CHN_ATTR_S stAencAttr;    
-    AENC_ATTR_G711_S stAencG711;
+//    AENC_ATTR_G711_S stAencG711;
 	AENC_ATTR_LPCM_S stAencLpcm;
 
 	stAencAttr.u32BufSize 	= 30;
@@ -1099,10 +1169,7 @@ HI_VOID* COMM_VENC_GetVencStreamProc(void* param)
         else if (s32Ret == 0)
         {
             LOGE_print("get venc stream time out, continue");
-			//这里要触发一些事情，1. 关闭VO 2.重启检测VI分辨率
-			g_phidi_reset = 1;
-			g_phidi_on = 0;
-			break;
+			continue;
         }
         else
         {
@@ -1234,7 +1301,8 @@ HI_VOID* COMM_AENC_GetAencStreamProc(void* param)
 				
 				int out_identifier = OUT_BITSTREAM_DATA;
 				int out_size, out_elem_size;
-				void *in_ptr, *out_ptr;
+//				void *in_ptr;
+				void *out_ptr;
 				HI_U8 outbuf[20480];
 
 				in_args.numInSamples = stStream.u32Len/2;
@@ -1255,7 +1323,7 @@ HI_VOID* COMM_AENC_GetAencStreamProc(void* param)
 
 				if (aacEncEncode(hAacEncoder, &in_buf, &out_buf, &in_args, &out_args) != AACENC_OK) {
 					SAMPLE_PRT("Encoding failed\n");
-					return -1;
+					return NULL;
 				}
 
 //				LOGI_print("aacsize:%d", out_args.numOutBytes);
@@ -1300,7 +1368,6 @@ void COMM_HandleSig(HI_S32 signo)
 int main(int argc, char *argv[])
 {
     HI_S32 s32Ret;
-	int ret;
 	
 	signal(SIGINT, COMM_HandleSig);
     signal(SIGTERM, COMM_HandleSig);
@@ -1313,13 +1380,15 @@ int main(int argc, char *argv[])
 	Phidi_AACLC_Init();
 	while(1)
 	{
-		//如果已经初始化好了 并且没有发现分辨率改变
-		if(g_phidi_on == 1 && switch_vi_resolution() != 1)
+		int viStatus = switch_vi_resolution();
+		if(viStatus == VI_HDMI_EMPTY	//开始没插上和被拔掉之后
+			|| (g_phidi_on == 1 && viStatus == VI_HDMI_READY))	//运行起来后，没有修改
 		{
 			usleep(1000*1000);
 			continue;
 		}
-		else if(g_phidi_reset == 1 || switch_vi_resolution() == 1) //或者分辨率改变
+
+		if(viStatus == VI_HDMI_CHANGE_RES || viStatus == VI_HDMI_CHANGE_EMPTY)
 		{
 			if(gs_VencPid != 0)
 			{//退出线程
@@ -1337,17 +1406,17 @@ int main(int argc, char *argv[])
 
 			//做一些重置工作
 			Phidi_Globle_UnInit();
-
-			g_phidi_reset = 0;
+			if(viStatus == VI_HDMI_CHANGE_EMPTY)
+			{
+				g_phidi_on = 0;
+				LOGI_print("VI_HDMI_CHANGE_EMPTY");
+				continue;
+			}
 		}
+
+		//需要
+		Phidi_Globle_UnInit();
 		
-		ret = switch_vi_resolution();
-		if(ret != 0)
-		{
-			usleep(1000*1000);
-			continue;
-		}
-
 		s32Ret = Phidi_VENC_Init();
 	    s32Ret = Phidi_AENC_Init();
 		Phidi_VOUT_HDMI_Init();
