@@ -28,7 +28,7 @@ int g_recStart = 0;
 int g_recStopping = 0;
 int g_ledPidStop = 0;
 
-#define STORAGE_DIR "/mnt/root/" // "/mnt/usb1/"	// "/mnt/root/"
+#define STORAGE_DIR "/mnt/usb1/" // "/mnt/usb1/"	// "/mnt/root/"
 
 struct led_desc{
 	unsigned int  key_val;
@@ -182,6 +182,30 @@ void* init_led_sighandle(void*)
 	close(fd);
 }
 
+void grabber_mp4name_get(char* dir, char* filename)
+{
+	static int s_grabber_index = 0;
+	char result[1024] = {0};
+	char cmd[128] = {0};
+	sprintf(cmd,"ls -lt /mnt/root/ | grep mp4 | grep 'grabber_[0-9]\\{4,4\\}.mp4' | head -n 1 |awk '{print $9}'");
+	int ret = exec_cmd_ex(cmd, result, 1024);
+	if(ret > 0)
+	{
+		sscanf(result, "grabber_%d.mp4", &s_grabber_index);
+		s_grabber_index++;
+	}
+	else
+	{
+		s_grabber_index = 1;
+	}
+
+	if(s_grabber_index == 9999)
+		s_grabber_index = 1;
+	
+	sprintf(filename,"%s/grabber_%04d.mp4", dir, s_grabber_index);
+	
+}
+
 int main(int argc, const char *argv[])
 {
 	pthread_t led_pid;
@@ -205,7 +229,8 @@ int main(int argc, const char *argv[])
 			
 			//根据当前时间取得文件名
 			char filename[64] = {0};
-			localtime_mp4name_get(STORAGE_DIR, filename);
+//			localtime_mp4name_get(STORAGE_DIR, filename);
+			grabber_mp4name_get(STORAGE_DIR, filename);
 			LOGI_print("start recording file %s", filename);
 			
 			MP4Mux_Open(filename);
