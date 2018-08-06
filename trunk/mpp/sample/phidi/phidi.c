@@ -106,7 +106,6 @@ int switch_vi_resolution()
 		if (hdmi_mode < 0)
 	 	{
 			close(g_fd);
-			HDMIFrameMode = 0;
 			if( HDMImode != 0)
 			{
 				HDMImode = 0;
@@ -127,7 +126,7 @@ int switch_vi_resolution()
     }
     close(g_fd);
 
-	LOGI_print("resolution mode : %d",hdmi_mode); 
+	LOGI_print("resolution mode : %d", hdmi_res); 
 	if(hdmi_res == VI_RESOLUTION_1920X1080) {
 		HDMI_W = 1920;
     	HDMI_H = 1080;  
@@ -183,11 +182,13 @@ int switch_vi_resolution()
 		|| (hdmi_mode != HDMIFrameMode && HDMIFrameMode != 0))
 	{
 		LOGW_print("HDMI IN resolution changed..");
+		HDMIFrameMode = hdmi_mode;
 		HDMImode = hdmi_res;
 		return VI_HDMI_CHANGE_RES;
 	}
 	else
 	{
+		HDMIFrameMode = hdmi_mode;
 		HDMImode = hdmi_res;
 		return VI_HDMI_READY;
 	}
