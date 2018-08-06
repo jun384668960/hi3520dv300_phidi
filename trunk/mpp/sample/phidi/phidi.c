@@ -686,7 +686,7 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
     stAioAttr.enSamplerate = AUDIO_SAMPLE_RATE_48000;		
 	stAioAttr.enBitwidth  = AUDIO_BIT_WIDTH_16;						
 	stAioAttr.enWorkmode = AIO_MODE_I2S_SLAVE;
-    stAioAttr.enSoundmode = AUDIO_SOUND_MODE_STEREO;
+    stAioAttr.enSoundmode = AUDIO_SOUND_MODE_MONO;
     stAioAttr.u32EXFlag = 1;										//扩展成16 位，8bit到16bit 扩展标志只对AI采样精度为8bit 时有效
     stAioAttr.u32FrmNum = 30;
     stAioAttr.u32PtNumPerFrm = 1024;//SAMPLE_AUDIO_PTNUMPERFRM;
@@ -720,57 +720,56 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
         LOGE_print("HI_MPI_AI_Enable(%d) failed with %#x", AiDev, s32Ret);
         return HI_FAILURE;
     }
-    
-    s32Ret =HI_MPI_AI_EnableChn(AiDev,AiChn);
-    if (s32Ret)
-    {
-        LOGE_print("HI_MPI_AI_EnableChn(%d,%d) failed with %#x", AiDev, AiChn, s32Ret);
-        return -1;    
-    }
-  	//step 3: start Aenc
-  	
+
+    //step 3: start Aenc
     AENC_CHN_ATTR_S stAencAttr;    
-//    AENC_ATTR_G711_S stAencG711;
-	AENC_ATTR_LPCM_S stAencLpcm;
-
-	stAencAttr.u32BufSize 	= 30;
-	stAencAttr.enType       = gs_enPayloadType;
-//	stAencAttr.u32PtNumPerFrm	= 320;
-//	stAencAttr.pValue 		= &stAencG711;
-	stAencAttr.u32PtNumPerFrm	= 1024;
-	stAencAttr.pValue 		= &stAencLpcm;
-
-    //start Audio Encode
-    /* create aenc chn*/
-    s32Ret = HI_MPI_AENC_CreateChn(AeChn, &stAencAttr);
-    if (s32Ret != HI_SUCCESS)
-    {
-        LOGE_print("%s: HI_MPI_AENC_CreateChn(%d) failed with %#x!", __FUNCTION__,
-               AeChn, s32Ret);
-        return HI_FAILURE;
-    }        
-    LOGI_print("after HI_MPI_AENC_CreateChn");
- 	 
-    /********************************************
-      step 4: Aenc bind Ai Chn
-    ********************************************/
-    MPP_CHN_S stSrcChn,stDestChn;
+    AENC_ATTR_LPCM_S stAencLpcm;
     
-	stSrcChn.enModId = HI_ID_AI;
-	stSrcChn.s32DevId = AiDev;
-	stSrcChn.s32ChnId = AiChn;
-	stDestChn.enModId = HI_ID_AENC;
-	stDestChn.s32DevId = 0;
-	stDestChn.s32ChnId = AeChn;
-	
-	s32Ret = HI_MPI_SYS_Bind(&stSrcChn, &stDestChn);
-	if (s32Ret != HI_SUCCESS)
-	{
-		LOGE_print("Ai(%d,%d) bind to AencChn:%d failed!",AiDev , AiChn, AeChn);
-		return s32Ret;
-}
+    stAencAttr.u32BufSize   = 30;
+    stAencAttr.enType       = gs_enPayloadType;
+    stAencAttr.u32PtNumPerFrm   = 1024;
+    stAencAttr.pValue       = &stAencLpcm;
+    
+    for (int i = 0; i < stAioAttr.u32ChnCnt; ++i)
+    {
+        s32Ret =HI_MPI_AI_EnableChn(AiDev,i);
+        if (s32Ret)
+        {
+            LOGE_print("HI_MPI_AI_EnableChn(%d,%d) failed with %#x", AiDev, i, s32Ret);
+            return -1;    
+        }
         
-    LOGI_print("Ai(%d,%d) bind to AencChn:%d ok!",AiDev , AiChn, AeChn);
+        /* create aenc chn*/
+        s32Ret = HI_MPI_AENC_CreateChn(i, &stAencAttr);
+        if (s32Ret != HI_SUCCESS)
+        {
+            LOGE_print("%s: HI_MPI_AENC_CreateChn(%d) failed with %#x!", __FUNCTION__,
+                   i, s32Ret);
+            return HI_FAILURE;
+        }        
+        LOGI_print("after HI_MPI_AENC_CreateChn");
+         
+        /********************************************
+          step 4: Aenc bind Ai Chn
+        ********************************************/
+        MPP_CHN_S stSrcChn,stDestChn;
+        
+        stSrcChn.enModId = HI_ID_AI;
+        stSrcChn.s32DevId = AiDev;
+        stSrcChn.s32ChnId = i;
+        stDestChn.enModId = HI_ID_AENC;
+        stDestChn.s32DevId = 0;
+        stDestChn.s32ChnId = i;
+        
+        s32Ret = HI_MPI_SYS_Bind(&stSrcChn, &stDestChn);
+        if (s32Ret != HI_SUCCESS)
+        {
+            LOGE_print("Ai(%d,%d) bind to AencChn:%d failed!",AiDev , i, i);
+            return s32Ret;
+        }
+            
+        LOGI_print("Ai(%d,%d) bind to AencChn:%d ok!",AiDev , i, i);
+    }
     
     return s32Ret;
 }	
@@ -947,7 +946,7 @@ HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
 	stHdmiAoAttr.enSamplerate   = AUDIO_SAMPLE_RATE_48000;
     stHdmiAoAttr.enBitwidth     = AUDIO_BIT_WIDTH_16;
     stHdmiAoAttr.enWorkmode     = AIO_MODE_I2S_MASTER;
-    stHdmiAoAttr.enSoundmode    = AUDIO_SOUND_MODE_STEREO;
+    stHdmiAoAttr.enSoundmode    = AUDIO_SOUND_MODE_MONO;
     stHdmiAoAttr.u32EXFlag      = 1;
     stHdmiAoAttr.u32FrmNum      = 30;
     stHdmiAoAttr.u32PtNumPerFrm = SAMPLE_AUDIO_PTNUMPERFRM;
@@ -959,13 +958,6 @@ HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
 //	stAoReSampleAttr.u32InPointNum	= SAMPLE_AUDIO_PTNUMPERFRM;
 //	stAoReSampleAttr.enInSampleRate = AUDIO_SAMPLE_RATE_32000;
 //	stAoReSampleAttr.enOutSampleRate = AUDIO_SAMPLE_RATE_48000;
-
-	s32Ret =HI_MPI_AI_EnableChn(AiDev, AiChn);
-	if (s32Ret)
-	{
-		LOGE_print("HI_MPI_AI_EnableChn(%d,%d) failed with %#x", AiDev, AiChn, s32Ret);
-		return -1;	  
-	}
 		
 	Phidi_AOUT_HdmiSet(stHdmiAoAttr);
 
@@ -983,20 +975,23 @@ HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
         return HI_FAILURE;
     }
 
-	s32Ret = HI_MPI_AO_EnableChn(AoDev, AoChn);
-    if (HI_SUCCESS != s32Ret)
+    for (int i = 0; i < stHdmiAoAttr.u32ChnCnt; ++i)
     {
-        LOGE_print("HI_MPI_AO_EnableChn(%d) failed with %#x!", AoChn, s32Ret);
-        return HI_FAILURE;
-    }
+        s32Ret = HI_MPI_AO_EnableChn(AoDev, i);
+        if (HI_SUCCESS != s32Ret)
+        {
+            LOGE_print("HI_MPI_AO_EnableChn(%d) failed with %#x!", i, s32Ret);
+            return HI_FAILURE;
+        }
 
-	/* AI to AO channel */
-	s32Ret = SAMPLE_COMM_AUDIO_CreatTrdAiAo(AiDev, AiChn, AoDev, AoChn);
-	if (s32Ret != HI_SUCCESS)
-	{
-		LOGE_print("SAMPLE_COMM_AUDIO_CreatTrdAiAo s32Ret:%d", s32Ret);
-		return HI_FAILURE;
-	}
+        /* AI to AO channel */
+        s32Ret = SAMPLE_COMM_AUDIO_CreatTrdAiAo(AiDev, i, AoDev, i);
+        if (s32Ret != HI_SUCCESS)
+        {
+            LOGE_print("SAMPLE_COMM_AUDIO_CreatTrdAiAo s32Ret:%d", s32Ret);
+            return HI_FAILURE;
+        }
+    }
 
 	return HI_TRUE;
 }
@@ -1266,6 +1261,8 @@ HI_VOID* COMM_AENC_GetAencStreamProc(void* param)
     }
         
     LOGI_print("maxfd = %d",maxfd);
+	static FILE* pAudio = NULL;
+	
     while (stAPara->bThreadStart == HI_TRUE)
     {
         FD_ZERO(&read_fds);
@@ -1328,10 +1325,10 @@ HI_VOID* COMM_AENC_GetAencStreamProc(void* param)
 					return NULL;
 				}
 
-//				LOGI_print("aacsize:%d", out_args.numOutBytes);
-//				static FILE* pAudio = NULL;
-//				if(pAudio == NULL) pAudio = fopen("test.Audio", "wb");
-//				if(pAudio != NULL) fwrite(outbuf, 1, out_args.numOutBytes, pAudio);
+				LOGI_print("aacsize:%d", out_args.numOutBytes);
+				// if(pAudio == NULL) pAudio = fopen("/mnt/usb1/test.Audio", "wb");
+                if(pAudio != NULL) fwrite(stStream.pStream,1,stStream.u32Len, pAudio);
+                // if(pAudio != NULL) fwrite(outbuf, 1, out_args.numOutBytes, pAudio);
 
 				stStream.pStream = outbuf;
 				stStream.u32Len = out_args.numOutBytes;
@@ -1343,10 +1340,12 @@ HI_VOID* COMM_AENC_GetAencStreamProc(void* param)
         		{
             		LOGE_print("%s: HI_MPI_AENC_ReleaseStream(%d), failed with %#x!",\
                    		__FUNCTION__, AeChn, s32Ret);
-        		}										
+        		}		
+
             }
         }
     }
+	if(pAudio != NULL) fclose(pAudio);
 
 	return NULL;
 }

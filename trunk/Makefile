@@ -10,6 +10,11 @@ rel:
 	@cd output/;    $(STRIP) phidi mp4file
 	-@./cp_to_rftp.sh
 
+phidi:
+	-@mkdir output
+	@cd mpp/sample/phidi/;    make
+	-@./cp_to_rftp.sh
+	
 wm8960:
 	-@mkdir output
 	@cd mpp/extdrv/wm8960/;    make
