@@ -7,7 +7,7 @@ include ../Makefile.param
 #endif
 
 PHIDI_LIB := ./lib
-PHIDI_INC := -I./include/fdkaac
+PHIDI_INC := -I./include -I./include/fdkaac
 
 CFLAGS += $(PHIDI_INC)
 CFLAGS += -std=gnu99
@@ -25,9 +25,10 @@ MPI_LIBS := $(REL_LIB)/libmpi.a
 MPI_LIBS += $(REL_LIB)/libhdmi.a
              
 $(TARGET):%:%.o $(COMM_OBJ)
+	if [ ! -d "$(SDK_PATH)/output/" ]; then mkdir -p "$(SDK_PATH)/output/"; fi;\
 	$(CC) $(CFLAGS) -lpthread -lm -o $@ $^ $(MPI_LIBS) $(AUDIO_LIBA) $(JPEGD_LIBA) -L$(PHIDI_LIB) -lfdk-aac 
-	-@[ -d "$(SDK_PATH)/output/" ] && cp $(TARGET) $(SDK_PATH)/output/
-
+	cp $(TARGET) "$(SDK_PATH)/output/"
+	
 clean:
 	@rm -f $(TARGET)
 	@rm -f $(OBJ)

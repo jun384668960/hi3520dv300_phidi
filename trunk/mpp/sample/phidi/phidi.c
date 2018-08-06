@@ -24,14 +24,9 @@ extern "C"{
 #include <unistd.h>
 #include <pthread.h>
 #include <signal.h>
-
 #include "sample_comm.h"
-#include "mpi_sys.h"
-#include "mpi_vb.h"
-#include "mpi_aenc.h"
-#include "mpi_ai.h"
-#include "mpi_ao.h"
 
+#include "phidi.h"
 #include "utils_log.h"
 #include "stream_manager.h"
 #include "stream_define.h"
@@ -40,33 +35,6 @@ extern "C"{
 
 HANDLE_AACENCODER hAacEncoder;
 VIDEO_NORM_E gs_enNorm = VIDEO_ENCODING_MODE_NTSC;
-#define VPSS_BSTR_CHN     		0
-#define VPSS_LSTR_CHN     		1
-//#define VENC_MAX_CHN_NUM  2
-
-#define MAX_FRAME_LEN (1024*1024)
-
-typedef enum viHDMI_STATUS
-{
-	VI_HDMI_READY,
-	VI_HDMI_EMPTY,
-	VI_HDMI_CHANGE_RES,
-	VI_HDMI_CHANGE_EMPTY,
-};
-
-typedef enum VI_RESOLUTION_E
-{
-	VI_RESOLUTION_1920X1080	= 1,
-	VI_RESOLUTION_1280X1024	= 5,
-	VI_RESOLUTION_1280X800	= 6,
-	VI_RESOLUTION_1280X768	= 7,
-	VI_RESOLUTION_1280X720	= 2,
-	VI_RESOLUTION_720X576	= 3,
-	VI_RESOLUTION_720X480	= 4,
-	VI_RESOLUTION_640X480	= 8,
-	VI_RESOLUTION_UNKOWN	= -1,
-};
-
 
 static PAYLOAD_TYPE_E gs_enPayloadType = PT_LPCM;//PT_AAC;//PT_G711A;//PT_LPCM;
 static SAMPLE_VENC_GETSTREAM_PARA_S gs_stVPara;
@@ -78,6 +46,7 @@ static shm_stream_t* 	g_audiohandle = NULL;
 static unsigned char* 	g_frame = NULL;
 static unsigned int		g_phidi_on = 0;
 
+int		HDMIFrameMode = 0;
 int 	HDMImode = 0;
 HI_U32 	HDMI_H,HDMI_W;
 
@@ -121,6 +90,7 @@ VI_DEV_ATTR_S DEV_ATTR_BT1120_1080P_1MUX_BASE =
 int switch_vi_resolution()
 {
 	int hdmi_mode = -99;
+	int hdmi_res = -99;
 	HDMI_W = 1920;
     HDMI_H = 1080;   	
     
@@ -132,7 +102,7 @@ int switch_vi_resolution()
     }
 	else
 	{	
-		hdmi_mode = ioctl(g_fd, 0x10, 0);
+		hdmi_mode = ioctl(g_fd, HDMI_FREME_MODE, 0);
 		if (hdmi_mode < 0)
 	 	{
 			close(g_fd);
@@ -150,44 +120,45 @@ int switch_vi_resolution()
 		}
 		else 
 		{
-			hdmi_mode = ioctl(g_fd, 0x12, 0);
+			LOGI_print("HDMI_FREME_MODE %d", hdmi_mode);
+			hdmi_res = ioctl(g_fd, HDMI_RESOLUTION, 0);
 		}
     }
     close(g_fd);
 
-	LOGI_print("resolution mode : %d",hdmi_mode); 
-	if(hdmi_mode == VI_RESOLUTION_1920X1080) {
+	LOGI_print("resolution mode : %d", hdmi_res); 
+	if(hdmi_res == VI_RESOLUTION_1920X1080) {
 		HDMI_W = 1920;
     	HDMI_H = 1080;  
     }
-	else if(HDMImode == VI_RESOLUTION_1280X1024) 
+	else if(hdmi_res == VI_RESOLUTION_1280X1024) 
 	{
 		HDMI_W = 1280;
 	    HDMI_H = 1024;	
 	}
-	else if(HDMImode == VI_RESOLUTION_1280X800) 
+	else if(hdmi_res == VI_RESOLUTION_1280X800) 
 	{
 		HDMI_W = 1280;
 	    HDMI_H = 800;
     }
-	else if(HDMImode == VI_RESOLUTION_1280X768) 
+	else if(hdmi_res == VI_RESOLUTION_1280X768) 
 	{
 		HDMI_W = 1280;
 	    HDMI_H = 768;
     }
-	else if(hdmi_mode == VI_RESOLUTION_1280X720) {   	//720P
+	else if(hdmi_res == VI_RESOLUTION_1280X720) {   	//720P
 		HDMI_W = 1280;
 	    HDMI_H = 720;
     }	
-    else if(hdmi_mode == VI_RESOLUTION_720X576) {			//576P
+    else if(hdmi_res == VI_RESOLUTION_720X576) {			//576P
 		HDMI_W = 720;
         HDMI_H = 576;
     }
-    else if(hdmi_mode == VI_RESOLUTION_720X480) {			//480P
+    else if(hdmi_res == VI_RESOLUTION_720X480) {			//480P
  		HDMI_W = 720;
 		HDMI_H = 480;   			
     }	
-	else if(HDMImode == VI_RESOLUTION_640X480)
+	else if(hdmi_res == VI_RESOLUTION_640X480)
 	{
 		HDMI_W = 640;
 		HDMI_H = 480; 
@@ -207,15 +178,18 @@ int switch_vi_resolution()
 		}
 	}
 
-	if(hdmi_mode != HDMImode && HDMImode != 0)
+	if((hdmi_res != HDMImode && HDMImode != 0)
+		|| (hdmi_mode != HDMIFrameMode && HDMIFrameMode != 0))
 	{
 		LOGW_print("HDMI IN resolution changed..");
-		HDMImode = hdmi_mode;
+		HDMIFrameMode = hdmi_mode;
+		HDMImode = hdmi_res;
 		return VI_HDMI_CHANGE_RES;
 	}
 	else
 	{
-		HDMImode = hdmi_mode;
+		HDMIFrameMode = hdmi_mode;
+		HDMImode = hdmi_res;
 		return VI_HDMI_READY;
 	}
 	
@@ -225,7 +199,10 @@ int switch_hdmi_resolution()
 {
 	if(HDMImode == VI_RESOLUTION_1920X1080)
 	{
-		return VO_OUTPUT_1080P60;	
+		if(HDMIFrameMode == VI_FRAME_MODE_P)
+			return VO_OUTPUT_1080P60;	
+		else
+			return VO_OUTPUT_1080I60;
 	}
 	else if(HDMImode == VI_RESOLUTION_1280X1024) 
 	{
@@ -378,6 +355,14 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
     memset(&stViDevAttr,0,sizeof(stViDevAttr));
     memcpy(&stViDevAttr,&DEV_ATTR_BT1120_1080P_1MUX_BASE,sizeof(stViDevAttr));     
    	LOGI_print("before HI_MPI_VI_SetDevAttr");
+	if(HDMIFrameMode == VI_FRAME_MODE_P)
+	{
+		stViDevAttr.enIntfMode = VI_MODE_BT1120_STANDARD;
+	}
+	else
+	{
+		stViDevAttr.enIntfMode = VI_MODE_BT1120_INTERLEAVED;
+	}
    
     s32Ret = HI_MPI_VI_SetDevAttr(ViDev, &stViDevAttr);
     if (s32Ret != HI_SUCCESS)
@@ -460,7 +445,7 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
     stGrpAttr.bDciEn = HI_FALSE;
     stGrpAttr.bHistEn = HI_FALSE;
     stGrpAttr.bEsEn = HI_FALSE;
-    stGrpAttr.enDieMode = VPSS_DIE_MODE_NODIE;
+    stGrpAttr.enDieMode = VPSS_DIE_MODE_AUTO;
     
     VpssGrp = 0;
     /*** create vpss group ***/
@@ -1385,7 +1370,7 @@ int main(int argc, char *argv[])
 		if(viStatus == VI_HDMI_EMPTY	//开始没插上和被拔掉之后
 			|| (g_phidi_on == 1 && viStatus == VI_HDMI_READY))	//运行起来后，没有修改
 		{
-			usleep(1000*1000);
+			usleep(20*1000);
 			continue;
 		}
 

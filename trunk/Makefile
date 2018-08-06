@@ -5,8 +5,6 @@ rel:
 	-@mkdir output
 	@cd mpp/sample/phidi;   make
 	@cd record;    make
-	@cd mpp/extdrv/wm8960/;    make
-	@cd mpp/extdrv/it6801/;    make
 	@cd output/;    $(STRIP) phidi mp4file
 	-@./cp_to_rftp.sh
 
@@ -24,7 +22,6 @@ it6801:
 	-@mkdir output
 	@cd mpp/extdrv/it6801/;    make
 	-@./cp_to_rftp.sh
-
 	
 clean:
 	-@rm -rf output/

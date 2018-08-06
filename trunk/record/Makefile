@@ -13,7 +13,7 @@ all: $(BINS)
 
 $(BINS):
 	$(CC) main.cpp $(SRCS) -o $(BINS) $(CFLAG)
-	-@[ -d "../output" ] && cp $(BINS) ../output
+	cp $(BINS) ../output/
 	
 clean:
 	@rm -rf $(BINS)
