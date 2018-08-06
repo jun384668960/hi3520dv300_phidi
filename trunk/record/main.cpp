@@ -199,7 +199,7 @@ void grabber_mp4name_get(char* dir, char* filename)
 		s_grabber_index = 1;
 	}
 
-	if(s_grabber_index == 9999)
+	if(s_grabber_index > 9999)
 		s_grabber_index = 1;
 	
 	sprintf(filename,"%s/grabber_%04d.mp4", dir, s_grabber_index);

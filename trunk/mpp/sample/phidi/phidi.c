@@ -133,18 +133,18 @@ int switch_vi_resolution()
 	else
 	{	
 		hdmi_mode = ioctl(g_fd, 0x10, 0);
-		LOGI_print("1111resolution mode : %d",hdmi_mode); 
 		if (hdmi_mode < 0)
 	 	{
-    		LOGE_print(" VI_SCAN_INTERLACED read error!");
 			close(g_fd);
 			if( HDMImode != 0)
 			{
 				HDMImode = 0;
+				LOGW_print("HDMI IN unpin...");
 				return VI_HDMI_CHANGE_EMPTY;
 			}
 			else
 			{
+				LOGE_print("HDMI IN enpty...");
 				return VI_HDMI_EMPTY;
 			}
 		}
@@ -155,7 +155,7 @@ int switch_vi_resolution()
     }
     close(g_fd);
 
-	LOGI_print("2222resolution mode : %d",hdmi_mode); 
+	LOGI_print("resolution mode : %d",hdmi_mode); 
 	if(hdmi_mode == VI_RESOLUTION_1920X1080) {
 		HDMI_W = 1920;
     	HDMI_H = 1080;  
@@ -194,20 +194,22 @@ int switch_vi_resolution()
 	}
     else
     {
-//    	LOGI_print("interlace mode");    
 		if( HDMImode != 0)
 		{
 			HDMImode = 0;
+			LOGW_print("HDMI IN unpin..");
 			return VI_HDMI_CHANGE_EMPTY;
 		}
 		else
 		{
+			LOGE_print("HDMI IN enpty...");
 			return VI_HDMI_EMPTY;
 		}
 	}
 
 	if(hdmi_mode != HDMImode && HDMImode != 0)
 	{
+		LOGW_print("HDMI IN resolution changed..");
 		HDMImode = hdmi_mode;
 		return VI_HDMI_CHANGE_RES;
 	}
