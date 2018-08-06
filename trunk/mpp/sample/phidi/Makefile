@@ -10,6 +10,7 @@ PHIDI_LIB := ./lib
 PHIDI_INC := -I./include -I./include/fdkaac
 
 CFLAGS += $(PHIDI_INC)
+CFLAGS += -std=gnu99
 
 # target source
 SRC  := $(wildcard *.c) 
