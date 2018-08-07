@@ -1600,7 +1600,7 @@ HI_S32 SAMPLE_COMM_AUDIO_StartHdmi(AIO_ATTR_S *pstAioAttr)
     return HI_SUCCESS;
 }
 
-inline HI_S32 SAMPLE_COMM_AUDIO_StopHdmi(HI_VOID)
+static inline HI_S32 SAMPLE_COMM_AUDIO_StopHdmi(HI_VOID)
 {
     HI_S32 s32Ret;
     VO_DEV VoDev = 0;

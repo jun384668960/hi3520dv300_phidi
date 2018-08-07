@@ -13,7 +13,7 @@ OSD_COMP_INFO s_OSDCompInfo[OSD_COLOR_FMT_BUTT] = {{0, 4, 4, 4},   /*RGB444*/
                                                     {0, 8, 8, 8},   /*RGB888*/
                                                     {8, 8, 8, 8}    /*ARGB8888*/
                                                     };
-inline HI_U16 OSD_MAKECOLOR_U16(HI_U8 r, HI_U8 g, HI_U8 b, OSD_COMP_INFO compinfo)
+static inline HI_U16 OSD_MAKECOLOR_U16(HI_U8 r, HI_U8 g, HI_U8 b, OSD_COMP_INFO compinfo)
 {
     HI_U8 r1, g1, b1;
     HI_U16 pixel = 0;
