@@ -65,5 +65,5 @@ mpp/extdrv/led_drv/led_drv_test
 trunk/cp_to_rftp.sh
 trunk/mpp/sample/phidi/phidi
 trunk/record/mp4file
-trunk/osdrv/
+trunk/osdrv
 trunk/output/
