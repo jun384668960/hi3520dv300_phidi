@@ -19,6 +19,7 @@
 
 #include "sample_comm.h"
 //#include "acodec.h"
+#include "utils_log.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -51,6 +52,7 @@ typedef struct tagSAMPLE_AI_S
     HI_S32  AoChn;
     HI_BOOL bSendAenc;
     HI_BOOL bSendAo;
+    // FILE    *pfd;    
     pthread_t stAiPid;
 } SAMPLE_AI_S;
 
@@ -712,6 +714,8 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
     AiFd = HI_MPI_AI_GetFd(pstAiCtl->AiDev, pstAiCtl->AiChn);
     FD_SET(AiFd,&read_fds);
 
+    static FILE *fd_pcm = NULL;
+
     while (pstAiCtl->bStart)
     {     
         TimeoutVal.tv_sec = 1;
@@ -746,19 +750,36 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
             /* send frame to encoder */
             if (HI_TRUE == pstAiCtl->bSendAenc)
             {
-                s32Ret = HI_MPI_AENC_SendFrame(pstAiCtl->AencChn, &stFrame, NULL);
-                if (HI_SUCCESS != s32Ret )
-                {
-                    printf("%s: HI_MPI_AENC_SendFrame(%d), failed with %#x!\n",\
-                           __FUNCTION__, pstAiCtl->AencChn, s32Ret);
-                    pstAiCtl->bStart = HI_FALSE;
-                    return NULL;
-                }
+                #if 1
+                    LOGI_print("%d    %d    0x%x  0x%x   %llu  %lu   %lu   \n",
+                        stFrame.enBitwidth,
+                        stFrame.enSoundmode,
+                        stFrame.pVirAddr[0],
+                        stFrame.pVirAddr[1],
+                        stFrame.u64TimeStamp,
+                        stFrame.u32Seq,
+                        stFrame.u32Len);  
+
+                #else
+                    s32Ret = HI_MPI_AENC_SendFrame(pstAiCtl->AencChn, &stFrame, NULL);
+                    if (HI_SUCCESS != s32Ret )
+                    {
+                        printf("%s: HI_MPI_AENC_SendFrame(%d), failed with %#x!\n",\
+                               __FUNCTION__, pstAiCtl->AencChn, s32Ret);
+                        pstAiCtl->bStart = HI_FALSE;
+                        return NULL;
+                    }
+                #endif
             }
             
             /* send frame to ao */
             if (HI_TRUE == pstAiCtl->bSendAo)
             {
+                    if (fd_pcm == NULL){fd_pcm = fopen("/mnt/usb1/pcm", "wb");}
+                    for(int i=0; i<stFrame.u32Len; i+=2) {
+                      fwrite(stFrame.pVirAddr[0]+i,1 ,2 , fd_pcm);        
+                      fwrite(stFrame.pVirAddr[1]+i,1 ,2 , fd_pcm);        
+                    }                
                 s32Ret = HI_MPI_AO_SendFrame(pstAiCtl->AoDev, pstAiCtl->AoChn, &stFrame, 1000);
                 if (HI_SUCCESS != s32Ret )
                 {
@@ -783,6 +804,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
         }
     }
     
+    fclose(fd_pcm);
     pstAiCtl->bStart = HI_FALSE;
 	printf("%s: SAMPLE_COMM_AUDIO_DestoryTrdAi(%d, %d) done \n",\
           __FUNCTION__, pstAiCtl->AiDev, pstAiCtl->AiChn);

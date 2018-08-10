@@ -723,36 +723,49 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
             return -1;    
         }
         
-        /* create aenc chn*/
-        s32Ret = HI_MPI_AENC_CreateChn(i, &stAencAttr);
-        if (s32Ret != HI_SUCCESS)
+        #if 1
         {
-            LOGE_print("%s: HI_MPI_AENC_CreateChn(%d) failed with %#x!", __FUNCTION__,
-                   i, s32Ret);
-            return HI_FAILURE;
-        }        
-        LOGI_print("after HI_MPI_AENC_CreateChn");
-         
-        /********************************************
-          step 4: Aenc bind Ai Chn
-        ********************************************/
-        MPP_CHN_S stSrcChn,stDestChn;
-        
-        stSrcChn.enModId = HI_ID_AI;
-        stSrcChn.s32DevId = AiDev;
-        stSrcChn.s32ChnId = i;
-        stDestChn.enModId = HI_ID_AENC;
-        stDestChn.s32DevId = 0;
-        stDestChn.s32ChnId = i;
-        
-        s32Ret = HI_MPI_SYS_Bind(&stSrcChn, &stDestChn);
-        if (s32Ret != HI_SUCCESS)
-        {
-            LOGE_print("Ai(%d,%d) bind to AencChn:%d failed!",AiDev , i, i);
-            return s32Ret;
+            s32Ret = SAMPLE_COMM_AUDIO_CreatTrdAiAenc(AiDev, i, AeChn);
+            if (s32Ret != HI_SUCCESS)
+            {
+                LOGE_print("SAMPLE_COMM_AUDIO_CreatTrdAiAenc s32Ret:%d", s32Ret);
+                return HI_FAILURE;
+            }
         }
+        #else
+        {
+            /* create aenc chn*/
+            s32Ret = HI_MPI_AENC_CreateChn(i, &stAencAttr);
+            if (s32Ret != HI_SUCCESS)
+            {
+                LOGE_print("%s: HI_MPI_AENC_CreateChn(%d) failed with %#x!", __FUNCTION__,
+                       i, s32Ret);
+                return HI_FAILURE;
+            }        
+            LOGI_print("after HI_MPI_AENC_CreateChn");
+             
+            /********************************************
+              step 4: Aenc bind Ai Chn
+            ********************************************/
+            MPP_CHN_S stSrcChn,stDestChn;
             
-        LOGI_print("Ai(%d,%d) bind to AencChn:%d ok!",AiDev , i, i);
+            stSrcChn.enModId = HI_ID_AI;
+            stSrcChn.s32DevId = AiDev;
+            stSrcChn.s32ChnId = i;
+            stDestChn.enModId = HI_ID_AENC;
+            stDestChn.s32DevId = 0;
+            stDestChn.s32ChnId = i;
+            
+            s32Ret = HI_MPI_SYS_Bind(&stSrcChn, &stDestChn);
+            if (s32Ret != HI_SUCCESS)
+            {
+                LOGE_print("Ai(%d,%d) bind to AencChn:%d failed!",AiDev , i, i);
+                return s32Ret;
+            }
+            
+            LOGI_print("Ai(%d,%d) bind to AencChn:%d ok!",AiDev , i, i);
+        }
+        #endif
     }
     
     return s32Ret;
@@ -1412,10 +1425,13 @@ int main(int argc, char *argv[])
 	    pthread_create(&gs_VencPid, 0, COMM_VENC_GetVencStreamProc, (HI_VOID*)&gs_stVPara);  
 	    
 		s32Ret=HI_MPI_VI_EnableChn(0);
-		gs_stAPara.bThreadStart = HI_TRUE;
-	  	gs_stAPara.s32Cnt = 1;
-		pthread_create(&gs_AencPid, 0, COMM_AENC_GetAencStreamProc, (HI_VOID*)&gs_stAPara);  
-
+        #if 0
+        {
+            gs_stAPara.bThreadStart = HI_TRUE;
+            gs_stAPara.s32Cnt = 1;
+            pthread_create(&gs_AencPid, 0, COMM_AENC_GetAencStreamProc, (HI_VOID*)&gs_stAPara);  
+        }
+        #endif
 		g_phidi_on = 1;
 	}
 
