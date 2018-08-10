@@ -97,7 +97,7 @@ int switch_vi_resolution()
     int g_fd = open("/dev/it6801", 0);
     if(g_fd < 0)
     {
-        LOGE_print("Open it6801 error!");
+        // LOGE_print("Open it6801 error!");
 		return VI_HDMI_EMPTY;
     }
 	else
@@ -109,24 +109,24 @@ int switch_vi_resolution()
 			if( HDMImode != 0)
 			{
 				HDMImode = 0;
-				LOGW_print("HDMI IN unpin...");
+				// LOGW_print("HDMI IN unpin...");
 				return VI_HDMI_CHANGE_EMPTY;
 			}
 			else
 			{
-				LOGE_print("HDMI IN enpty...");
+				// LOGE_print("HDMI IN enpty...");
 				return VI_HDMI_EMPTY;
 			}
 		}
 		else 
 		{
-			LOGI_print("HDMI_FREME_MODE %d", hdmi_mode);
+			// LOGI_print("HDMI_FREME_MODE %d", hdmi_mode);
 			hdmi_res = ioctl(g_fd, HDMI_RESOLUTION, 0);
 		}
     }
     close(g_fd);
 
-	LOGI_print("resolution mode : %d", hdmi_res); 
+	// LOGI_print("resolution mode : %d", hdmi_res); 
 	if(hdmi_res == VI_RESOLUTION_1920X1080) {
 		HDMI_W = 1920;
     	HDMI_H = 1080;  
@@ -168,12 +168,12 @@ int switch_vi_resolution()
 		if( HDMImode != 0)
 		{
 			HDMImode = 0;
-			LOGW_print("HDMI IN unpin..");
+			// LOGW_print("HDMI IN unpin..");
 			return VI_HDMI_CHANGE_EMPTY;
 		}
 		else
 		{
-			LOGE_print("HDMI IN enpty...");
+			// LOGE_print("HDMI IN enpty...");
 			return VI_HDMI_EMPTY;
 		}
 	}
@@ -181,7 +181,7 @@ int switch_vi_resolution()
 	if((hdmi_res != HDMImode && HDMImode != 0)
 		|| (hdmi_mode != HDMIFrameMode && HDMIFrameMode != 0))
 	{
-		LOGW_print("HDMI IN resolution changed..");
+		// LOGW_print("HDMI IN resolution changed..");
 		HDMIFrameMode = hdmi_mode;
 		HDMImode = hdmi_res;
 		return VI_HDMI_CHANGE_RES;
@@ -1310,7 +1310,7 @@ HI_VOID* COMM_AENC_GetAencStreamProc(void* param)
 					return NULL;
 				}
 
-				LOGI_print("aacsize:%d", out_args.numOutBytes);
+				// LOGI_print("aacsize:%d", out_args.numOutBytes);
 				// if(pAudio == NULL) pAudio = fopen("/mnt/usb1/test.Audio", "wb");
                 if(pAudio != NULL) fwrite(stStream.pStream,1,stStream.u32Len, pAudio);
                 // if(pAudio != NULL) fwrite(outbuf, 1, out_args.numOutBytes, pAudio);
