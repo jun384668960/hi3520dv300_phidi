@@ -248,7 +248,7 @@ void Phidi_AACLC_Init(HI_VOID)
     aacEncoder_SetParam(hAacEncoder, AACENC_AOT, 			AOT_AAC_LC);//AOT_AAC_LC AOT_PS AOT_SBR
 	aacEncoder_SetParam(hAacEncoder, AACENC_BITRATE, 		128000);
 	aacEncoder_SetParam(hAacEncoder, AACENC_SAMPLERATE, 	48000);
-	aacEncoder_SetParam(hAacEncoder, AACENC_CHANNELMODE,	MODE_1);	//AOUT_CHANS_MONO
+	aacEncoder_SetParam(hAacEncoder, AACENC_CHANNELMODE,	MODE_2);	//AOUT_CHANS_MONO
 	aacEncoder_SetParam(hAacEncoder, AACENC_GRANULE_LENGTH, 1024);		//960 performance is better than 1024
 //	aacEncoder_SetParam(hAacEncoder, AACENC_SBR_MODE, 0);				//Disable Spectral Band Replication
 //  aacEncoder_SetParam(hAacEncoder, AACENC_SBR_RATIO, 0);				//close download sampled SBR

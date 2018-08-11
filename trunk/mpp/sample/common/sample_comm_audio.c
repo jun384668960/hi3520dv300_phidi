@@ -19,7 +19,12 @@
 
 #include "sample_comm.h"
 //#include "acodec.h"
+#include "phidi.h"
 #include "utils_log.h"
+#include "stream_manager.h"
+#include "stream_define.h"
+#include "utils_common.h"
+#include "aacenc_lib.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -715,6 +720,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
     FD_SET(AiFd,&read_fds);
 
     static FILE *fd_pcm = NULL;
+    static FILE *fd_aac = NULL;
 
     while (pstAiCtl->bStart)
     {     
@@ -750,7 +756,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
             /* send frame to encoder */
             if (HI_TRUE == pstAiCtl->bSendAenc)
             {
-                #if 1
+                #if 0
                     LOGI_print("%d    %d    0x%x  0x%x   %llu  %lu   %lu   \n",
                         stFrame.enBitwidth,
                         stFrame.enSoundmode,
@@ -761,15 +767,53 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
                         stFrame.u32Len);  
 
                 #else
-                    s32Ret = HI_MPI_AENC_SendFrame(pstAiCtl->AencChn, &stFrame, NULL);
-                    if (HI_SUCCESS != s32Ret )
-                    {
-                        printf("%s: HI_MPI_AENC_SendFrame(%d), failed with %#x!\n",\
-                               __FUNCTION__, pstAiCtl->AencChn, s32Ret);
-                        pstAiCtl->bStart = HI_FALSE;
-                        return NULL;
-                    }
+
+                AACENC_BufDesc in_buf = { 0 }, out_buf = { 0 };
+                AACENC_InArgs in_args = { 0 };
+                AACENC_OutArgs out_args = { 0 };
+                int in_identifier = IN_AUDIO_DATA;
+                int in_elem_size = 2;
+                
+                int out_identifier = OUT_BITSTREAM_DATA;
+                int out_size, out_elem_size;
+//              void *in_ptr;
+                void *out_ptr;
+                HI_U8 outbuf[20480];
+
+                in_args.numInSamples = stFrame.u32Len/2;
+                in_buf.numBufs = 2;
+                in_buf.bufs = stFrame.pVirAddr;
+                in_buf.bufferIdentifiers = &in_identifier;
+                in_buf.bufSizes = &stFrame.u32Len;
+                in_buf.bufElSizes = &in_elem_size;
+
+                out_ptr = outbuf;
+                out_size = sizeof(outbuf);
+                out_elem_size = 1;
+                out_buf.numBufs = 1;
+                out_buf.bufs = &out_ptr;
+                out_buf.bufferIdentifiers = &out_identifier;
+                out_buf.bufSizes = &out_size;
+                out_buf.bufElSizes = &out_elem_size;
+
+                extern HANDLE_AACENCODER hAacEncoder;
+                if (aacEncEncode(hAacEncoder, &in_buf, &out_buf, &in_args, &out_args) != AACENC_OK) {
+                    SAMPLE_PRT("Encoding failed\n");
+                    return NULL;
+                }    
+
+                if (fd_aac == NULL){fd_aac = fopen("/mnt/usb1/aac", "wb");}
+                fwrite(outbuf,1 ,out_args.numOutBytes , fd_aac);
+                          
                 #endif
+                    // s32Ret = HI_MPI_AENC_SendFrame(pstAiCtl->AencChn, &stFrame, NULL);
+                    // if (HI_SUCCESS != s32Ret )
+                    // {
+                    //     printf("%s: HI_MPI_AENC_SendFrame(%d), failed with %#x!\n",\
+                    //            __FUNCTION__, pstAiCtl->AencChn, s32Ret);
+                    //     pstAiCtl->bStart = HI_FALSE;
+                    //     return NULL;
+                    // }
             }
             
             /* send frame to ao */
@@ -805,6 +849,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
     }
     
     fclose(fd_pcm);
+    fclose(fd_aac);
     pstAiCtl->bStart = HI_FALSE;
 	printf("%s: SAMPLE_COMM_AUDIO_DestoryTrdAi(%d, %d) done \n",\
           __FUNCTION__, pstAiCtl->AiDev, pstAiCtl->AiChn);
@@ -1030,7 +1075,7 @@ HI_S32 SAMPLE_COMM_AUDIO_CreatTrdAiAo(AUDIO_DEV AiDev, AI_CHN AiChn, AUDIO_DEV A
     SAMPLE_AI_S *pstAi = NULL;
     
     pstAi = &gs_stSampleAi[AiDev*AIO_MAX_CHN_NUM + AiChn];
-    pstAi->bSendAenc = HI_FALSE;
+    pstAi->bSendAenc = HI_TRUE;
     pstAi->bSendAo = HI_TRUE;
     pstAi->bStart= HI_TRUE;
     pstAi->AiDev = AiDev;
