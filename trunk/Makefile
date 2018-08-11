@@ -6,7 +6,7 @@ rel:
 	@cd mpp/sample/phidi;   make
 	@cd record;    make
 	@cd output/;    $(STRIP) phidi mp4file
-	-@./cp_to_rftp.sh
+#	-@./cp_to_rftp.sh
 
 phidi:
 	-@mkdir output
