@@ -1385,7 +1385,7 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		int viStatus = switch_vi_resolution();
-		if(viStatus == VI_HDMI_EMPTY	// 1开始没插上和被拔掉之后
+		if(viStatus == VI_HDMI_EMPTY	// 开始没插上和被拔掉之后
 			|| (g_phidi_on == 1 && viStatus == VI_HDMI_READY))	//运行起来后，没有修改
 		{
 			usleep(20*1000);
