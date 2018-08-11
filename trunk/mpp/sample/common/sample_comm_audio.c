@@ -751,14 +751,14 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
             if (HI_TRUE == pstAiCtl->bSendAenc)
             {
                 #if 1
-                    LOGI_print("%d    %d    0x%x  0x%x   %llu  %lu   %lu   \n",
-                        stFrame.enBitwidth,
-                        stFrame.enSoundmode,
-                        stFrame.pVirAddr[0],
-                        stFrame.pVirAddr[1],
-                        stFrame.u64TimeStamp,
-                        stFrame.u32Seq,
-                        stFrame.u32Len);  
+                    // LOGI_print("%d    %d    0x%x  0x%x   %llu  %lu   %lu   \n",
+                    //     stFrame.enBitwidth,
+                    //     stFrame.enSoundmode,
+                    //     stFrame.pVirAddr[0],
+                    //     stFrame.pVirAddr[1],
+                    //     stFrame.u64TimeStamp,
+                    //     stFrame.u32Seq,
+                    //     stFrame.u32Len);  
 
                 #else
                     s32Ret = HI_MPI_AENC_SendFrame(pstAiCtl->AencChn, &stFrame, NULL);
