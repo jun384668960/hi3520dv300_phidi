@@ -19,6 +19,12 @@
 
 #include "sample_comm.h"
 //#include "acodec.h"
+#include "phidi.h"
+#include "utils_log.h"
+#include "stream_manager.h"
+#include "stream_define.h"
+#include "utils_common.h"
+#include "aacenc_lib.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -51,6 +57,7 @@ typedef struct tagSAMPLE_AI_S
     HI_S32  AoChn;
     HI_BOOL bSendAenc;
     HI_BOOL bSendAo;
+    // FILE    *pfd;    
     pthread_t stAiPid;
 } SAMPLE_AI_S;
 
@@ -711,6 +718,40 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
     FD_ZERO(&read_fds);
     AiFd = HI_MPI_AI_GetFd(pstAiCtl->AiDev, pstAiCtl->AiChn);
     FD_SET(AiFd,&read_fds);
+    // #define SAVE_AUDIO
+    #ifdef SAVE_AUDIO
+        const char *outfile = "/mnt/usb1/out.aac";
+        FILE *out = fopen(outfile, "wb");
+        if (!out) {
+            perror(outfile);
+            return 1;
+        }
+
+        const char *pcmfile = "/mnt/usb1/in.pcm";
+        FILE *pcm = fopen(pcmfile, "wb");
+        if (!pcm) {
+            perror(pcmfile);
+            return 1;
+        }
+
+        const char *convertfile = "/mnt/usb1/convert.pcm";
+        FILE *convert = fopen(convertfile, "wb");
+        if (!convert) {
+            perror(convertfile);
+            return 1;
+        }
+    #endif
+
+    extern HANDLE_AACENCODER hAacEncoder;
+    AACENC_InfoStruct info = { 0 };
+    if (aacEncInfo(hAacEncoder, &info) != AACENC_OK) {
+        printf("Unable to get the encoder info\n");
+        return 1;
+    }
+    int channels = 2;
+    int input_size = channels*2*info.frameLength;
+    uint8_t* input_buf = (uint8_t*) malloc(input_size);
+    int16_t* convert_buf = (int16_t*) malloc(input_size);
 
     while (pstAiCtl->bStart)
     {     
@@ -746,19 +787,115 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
             /* send frame to encoder */
             if (HI_TRUE == pstAiCtl->bSendAenc)
             {
-                s32Ret = HI_MPI_AENC_SendFrame(pstAiCtl->AencChn, &stFrame, NULL);
-                if (HI_SUCCESS != s32Ret )
-                {
-                    printf("%s: HI_MPI_AENC_SendFrame(%d), failed with %#x!\n",\
-                           __FUNCTION__, pstAiCtl->AencChn, s32Ret);
-                    pstAiCtl->bStart = HI_FALSE;
-                    return NULL;
-                }
+                #if 1
+                    // LOGI_print("%d    %d    0x%x  0x%x   %llu  %lu   %lu   \n",
+                    //     stFrame.enBitwidth,
+                    //     stFrame.enSoundmode,
+                    //     stFrame.pVirAddr[0],
+                    //     stFrame.pVirAddr[1],
+                    //     stFrame.u64TimeStamp,
+                    //     stFrame.u32Seq,
+                    //     stFrame.u32Len);  
+                    AACENC_BufDesc in_buf = { 0 }, out_buf = { 0 };
+                    AACENC_InArgs in_args = { 0 };
+                    AACENC_OutArgs out_args = { 0 };
+                    int in_identifier = IN_AUDIO_DATA;
+                    int in_size, in_elem_size;
+                    int out_identifier = OUT_BITSTREAM_DATA;
+                    int out_size, out_elem_size;
+                    void *in_ptr, *out_ptr;
+                    uint8_t outbuf[20480];
+                    AACENC_ERROR err;
+
+                    for(int i = 0; i < (stFrame.u32Len / 2); i++) {
+                        memcpy((input_buf + (4 * i)),     (stFrame.pVirAddr[0] + (i * 2)), 2);
+                        memcpy((input_buf + (4 * i) + 2), (stFrame.pVirAddr[1] + (i * 2)), 2);
+                    }   
+
+                    for (int i = 0; i < (stFrame.u32Len); i++) {
+                        const uint8_t* in = &input_buf[2*i];
+                        convert_buf[i] = in[0] | (in[1] << 8);
+                    }
+
+                    if (stFrame.u32Len <= 0) {
+                        in_args.numInSamples = -1;
+                    } else {
+                        in_ptr = convert_buf;
+                        in_size = stFrame.u32Len * 2;
+                        in_elem_size = 2;
+
+                        in_args.numInSamples = stFrame.u32Len;
+                        in_buf.numBufs = 1;
+                        in_buf.bufs = &in_ptr;
+                        in_buf.bufferIdentifiers = &in_identifier;
+                        in_buf.bufSizes = &in_size;
+                        in_buf.bufElSizes = &in_elem_size;
+                    }
+
+                    out_ptr = outbuf;
+                    out_size = sizeof(outbuf);
+                    out_elem_size = 1;
+                    out_buf.numBufs = 1;
+                    out_buf.bufs = &out_ptr;
+                    out_buf.bufferIdentifiers = &out_identifier;
+                    out_buf.bufSizes = &out_size;
+                    out_buf.bufElSizes = &out_elem_size;
+
+                    if ((err = aacEncEncode(hAacEncoder, &in_buf, &out_buf, &in_args, &out_args)) != AACENC_OK) {
+                        if (err == AACENC_ENCODE_EOF)
+                            break;
+                        printf("Encoding failed\n");
+                        return 1;
+                    }
+                    if (out_args.numOutBytes == 0)
+                    {
+                        continue;
+                    }
+                    
+                    extern shm_stream_t*    g_audiohandle;
+                    if(g_audiohandle != NULL)
+                    {
+                        HI_U8* pData;
+                        frame_info info;
+                        info.type = PT_LPCM;
+                        info.key = 1;
+                        info.pts = stFrame.u64TimeStamp;
+                        
+                        {
+                            pData = outbuf;
+                            info.length = out_args.numOutBytes;
+                        }
+                        
+                        int ret = shm_stream_put(g_audiohandle, info, pData, info.length);
+                        if(ret != 0)
+                        {
+                                LOGE_print("shm_stream_put error");
+                        }
+                        else
+                        {
+                                // LOGI_print("shm_stream_put audio info.lenght:%d info.pts:%llu", info.length, info.pts);
+                        }
+                    }
+                    #ifdef SAVE_AUDIO
+                        fwrite(outbuf, 1, out_args.numOutBytes, out);
+                        fwrite(input_buf, 1, input_size, pcm);
+                        fwrite(convert_buf, 1, input_size, convert);
+                    #endif
+                #else                
+                    s32Ret = HI_MPI_AENC_SendFrame(pstAiCtl->AencChn, &stFrame, NULL);
+                    if (HI_SUCCESS != s32Ret )
+                    {
+                        printf("%s: HI_MPI_AENC_SendFrame(%d), failed with %#x!\n",\
+                               __FUNCTION__, pstAiCtl->AencChn, s32Ret);
+                        pstAiCtl->bStart = HI_FALSE;
+                        return NULL;
+                    }
+                #endif
             }
             
             /* send frame to ao */
             if (HI_TRUE == pstAiCtl->bSendAo)
-            {
+            {              
                 s32Ret = HI_MPI_AO_SendFrame(pstAiCtl->AoDev, pstAiCtl->AoChn, &stFrame, 1000);
                 if (HI_SUCCESS != s32Ret )
                 {
@@ -782,7 +919,14 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
             
         }
     }
-    
+    free(input_buf);
+    free(convert_buf);
+    #ifdef SAVE_AUDIO
+        fclose(out);
+        fclose(pcm);
+        fclose(convert);
+    #endif
+    aacEncClose(&hAacEncoder);
     pstAiCtl->bStart = HI_FALSE;
 	printf("%s: SAMPLE_COMM_AUDIO_DestoryTrdAi(%d, %d) done \n",\
           __FUNCTION__, pstAiCtl->AiDev, pstAiCtl->AiChn);
@@ -1008,7 +1152,7 @@ HI_S32 SAMPLE_COMM_AUDIO_CreatTrdAiAo(AUDIO_DEV AiDev, AI_CHN AiChn, AUDIO_DEV A
     SAMPLE_AI_S *pstAi = NULL;
     
     pstAi = &gs_stSampleAi[AiDev*AIO_MAX_CHN_NUM + AiChn];
-    pstAi->bSendAenc = HI_FALSE;
+    pstAi->bSendAenc = HI_TRUE;
     pstAi->bSendAo = HI_TRUE;
     pstAi->bStart= HI_TRUE;
     pstAi->AiDev = AiDev;
@@ -1600,7 +1744,7 @@ HI_S32 SAMPLE_COMM_AUDIO_StartHdmi(AIO_ATTR_S *pstAioAttr)
     return HI_SUCCESS;
 }
 
-inline HI_S32 SAMPLE_COMM_AUDIO_StopHdmi(HI_VOID)
+static inline HI_S32 SAMPLE_COMM_AUDIO_StopHdmi(HI_VOID)
 {
     HI_S32 s32Ret;
     VO_DEV VoDev = 0;

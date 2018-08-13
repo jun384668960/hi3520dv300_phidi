@@ -11,7 +11,7 @@ rel:
 phidi:
 	-@mkdir output
 	@cd mpp/sample/phidi/;    make
-	@cd output/;    $(STRIP) phidi 
+	@cd output/;    $(STRIP) phidi
 	-@./cp_to_rftp.sh
 	
 wm8960:
