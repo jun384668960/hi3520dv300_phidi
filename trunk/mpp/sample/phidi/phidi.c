@@ -1403,6 +1403,7 @@ int main(int argc, char *argv[])
 	}
 
 	Phidi_Globle_UnInit();
+    aacEncClose(&hAacEncoder);
 	Phidi_System_UnInit();
 	
 	shm_stream_destory(g_handle);
