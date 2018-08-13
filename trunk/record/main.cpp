@@ -28,7 +28,7 @@ int g_recStart = 0;
 int g_recStopping = 0;
 int g_ledPidStop = 0;
 
-#define STORAGE_DIR "/mnt/usb1/" // "/mnt/usb1/"	// "/mnt/root/"
+#define STORAGE_DIR "/mnt/usb1" // "/mnt/usb1/"	// "/mnt/root/"
 
 struct led_desc{
 	unsigned int  key_val;
@@ -187,8 +187,9 @@ void grabber_mp4name_get(char* dir, char* filename)
 	static int s_grabber_index = 0;
 	char result[1024] = {0};
 	char cmd[128] = {0};
-	sprintf(cmd,"ls -lt /mnt/root/ | grep mp4 | grep 'grabber_[0-9]\\{4,4\\}.mp4' | head -n 1 |awk '{print $9}'");
+	sprintf(cmd,"ls -lt /mnt/usb1/ | grep mp4 | grep 'grabber_[0-9]\\{4,4\\}.mp4' | head -n 1 |awk '{print $9}'");
 	int ret = exec_cmd_ex(cmd, result, 1024);
+	// LOGI_print("ret:%d,result:%s",ret,result);
 	if(ret > 0)
 	{
 		sscanf(result, "grabber_%d.mp4", &s_grabber_index);

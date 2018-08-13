@@ -780,8 +780,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
             {
                 printf("%s: HI_MPI_AI_GetFrame(%d, %d), failed with %#x!\n",\
                        __FUNCTION__, pstAiCtl->AiDev, pstAiCtl->AiChn, s32Ret);
-                pstAiCtl->bStart = HI_FALSE;
-                return NULL;
+                break;
             }
 
             /* send frame to encoder */
@@ -843,9 +842,14 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
 
                     if ((err = aacEncEncode(hAacEncoder, &in_buf, &out_buf, &in_args, &out_args)) != AACENC_OK) {
                         if (err == AACENC_ENCODE_EOF)
+                        {
                             break;
-                        printf("Encoding failed\n");
-                        return 1;
+                        }
+                        else
+                        {
+                            printf("Encoding failed\n");
+                            break;
+                        }
                     }
                     if (out_args.numOutBytes == 0)
                     {
@@ -887,8 +891,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
                     {
                         printf("%s: HI_MPI_AENC_SendFrame(%d), failed with %#x!\n",\
                                __FUNCTION__, pstAiCtl->AencChn, s32Ret);
-                        pstAiCtl->bStart = HI_FALSE;
-                        return NULL;
+                        break;
                     }
                 #endif
             }
@@ -901,8 +904,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
                 {
                     printf("%s: HI_MPI_AO_SendFrame(%d, %d), failed with %#x!\n",\
                            __FUNCTION__, pstAiCtl->AoDev, pstAiCtl->AoChn, s32Ret);
-                    pstAiCtl->bStart = HI_FALSE;
-                    return NULL;
+                    break;
                 }
                 
             }
@@ -913,8 +915,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
             {
                 printf("%s: HI_MPI_AI_ReleaseFrame(%d, %d), failed with %#x!\n",\
                        __FUNCTION__, pstAiCtl->AiDev, pstAiCtl->AiChn, s32Ret);
-                pstAiCtl->bStart = HI_FALSE;
-                return NULL;
+                break;
             }
             
         }
@@ -926,7 +927,6 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
         fclose(pcm);
         fclose(convert);
     #endif
-    aacEncClose(&hAacEncoder);
     pstAiCtl->bStart = HI_FALSE;
 	printf("%s: SAMPLE_COMM_AUDIO_DestoryTrdAi(%d, %d) done \n",\
           __FUNCTION__, pstAiCtl->AiDev, pstAiCtl->AiChn);
