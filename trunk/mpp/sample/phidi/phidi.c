@@ -42,7 +42,7 @@ static SAMPLE_VENC_GETSTREAM_PARA_S gs_stAPara;
 static pthread_t 		gs_VencPid = 0;
 static pthread_t 		gs_AencPid = 0;
 static shm_stream_t* 	g_handle = NULL;
-static shm_stream_t* 	g_audiohandle = NULL;
+shm_stream_t* 	g_audiohandle = NULL;
 static unsigned char* 	g_frame = NULL;
 static unsigned int		g_phidi_on = 0;
 
@@ -89,110 +89,110 @@ VI_DEV_ATTR_S DEV_ATTR_BT1120_1080P_1MUX_BASE =
 
 int switch_vi_resolution()
 {
-	int hdmi_mode = -99;
-	int hdmi_res = -99;
-	HDMI_W = 1920;
-    HDMI_H = 1080;   	
+    int hdmi_mode = -99;
+    int hdmi_res = -99;
+    HDMI_W = 1920;
+    HDMI_H = 1080;      
     
     int g_fd = open("/dev/it6801", 0);
     if(g_fd < 0)
     {
         // LOGE_print("Open it6801 error!");
-		return VI_HDMI_EMPTY;
+        return VI_HDMI_EMPTY;
     }
-	else
-	{	
-		hdmi_mode = ioctl(g_fd, HDMI_FREME_MODE, 0);
-		if (hdmi_mode < 0)
-	 	{
-			close(g_fd);
-			if( HDMImode != 0)
-			{
-				HDMImode = 0;
-				// LOGW_print("HDMI IN unpin...");
-				return VI_HDMI_CHANGE_EMPTY;
-			}
-			else
-			{
-				// LOGE_print("HDMI IN enpty...");
-				return VI_HDMI_EMPTY;
-			}
-		}
-		else 
-		{
-			// LOGI_print("HDMI_FREME_MODE %d", hdmi_mode);
-			hdmi_res = ioctl(g_fd, HDMI_RESOLUTION, 0);
-		}
+    else
+    {   
+        hdmi_mode = ioctl(g_fd, HDMI_FREME_MODE, 0);
+        if (hdmi_mode < 0)
+        {
+            close(g_fd);
+            if( HDMImode != 0)
+            {
+                HDMImode = 0;
+                // LOGW_print("HDMI IN unpin...");
+                return VI_HDMI_CHANGE_EMPTY;
+            }
+            else
+            {
+                // LOGE_print("HDMI IN enpty...");
+                return VI_HDMI_EMPTY;
+            }
+        }
+        else 
+        {
+            // LOGI_print("HDMI_FREME_MODE %d", hdmi_mode);
+            hdmi_res = ioctl(g_fd, HDMI_RESOLUTION, 0);
+        }
     }
     close(g_fd);
 
-	// LOGI_print("resolution mode : %d", hdmi_res); 
-	if(hdmi_res == VI_RESOLUTION_1920X1080) {
-		HDMI_W = 1920;
-    	HDMI_H = 1080;  
+    // LOGI_print("resolution mode : %d", hdmi_res); 
+    if(hdmi_res == VI_RESOLUTION_1920X1080) {
+        HDMI_W = 1920;
+        HDMI_H = 1080;  
     }
-	else if(hdmi_res == VI_RESOLUTION_1280X1024) 
-	{
-		HDMI_W = 1280;
-	    HDMI_H = 1024;	
-	}
-	else if(hdmi_res == VI_RESOLUTION_1280X800) 
-	{
-		HDMI_W = 1280;
-	    HDMI_H = 800;
+    else if(hdmi_res == VI_RESOLUTION_1280X1024) 
+    {
+        HDMI_W = 1280;
+        HDMI_H = 1024;  
     }
-	else if(hdmi_res == VI_RESOLUTION_1280X768) 
-	{
-		HDMI_W = 1280;
-	    HDMI_H = 768;
+    else if(hdmi_res == VI_RESOLUTION_1280X800) 
+    {
+        HDMI_W = 1280;
+        HDMI_H = 800;
     }
-	else if(hdmi_res == VI_RESOLUTION_1280X720) {   	//720P
-		HDMI_W = 1280;
-	    HDMI_H = 720;
-    }	
-    else if(hdmi_res == VI_RESOLUTION_720X576) {			//576P
-		HDMI_W = 720;
+    else if(hdmi_res == VI_RESOLUTION_1280X768) 
+    {
+        HDMI_W = 1280;
+        HDMI_H = 768;
+    }
+    else if(hdmi_res == VI_RESOLUTION_1280X720) {       //720P
+        HDMI_W = 1280;
+        HDMI_H = 720;
+    }   
+    else if(hdmi_res == VI_RESOLUTION_720X576) {            //576P
+        HDMI_W = 720;
         HDMI_H = 576;
     }
-    else if(hdmi_res == VI_RESOLUTION_720X480) {			//480P
- 		HDMI_W = 720;
-		HDMI_H = 480;   			
-    }	
-	else if(hdmi_res == VI_RESOLUTION_640X480)
-	{
-		HDMI_W = 640;
-		HDMI_H = 480; 
-	}
+    else if(hdmi_res == VI_RESOLUTION_720X480) {            //480P
+        HDMI_W = 720;
+        HDMI_H = 480;               
+    }   
+    else if(hdmi_res == VI_RESOLUTION_640X480)
+    {
+        HDMI_W = 640;
+        HDMI_H = 480; 
+    }
     else
     {
-		if( HDMImode != 0)
-		{
-			HDMImode = 0;
-			// LOGW_print("HDMI IN unpin..");
-			return VI_HDMI_CHANGE_EMPTY;
-		}
-		else
-		{
-			// LOGE_print("HDMI IN enpty...");
-			return VI_HDMI_EMPTY;
-		}
-	}
+        if( HDMImode != 0)
+        {
+            HDMImode = 0;
+            // LOGW_print("HDMI IN unpin..");
+            return VI_HDMI_CHANGE_EMPTY;
+        }
+        else
+        {
+            // LOGE_print("HDMI IN enpty...");
+            return VI_HDMI_EMPTY;
+        }
+    }
 
-	if((hdmi_res != HDMImode && HDMImode != 0)
-		|| (hdmi_mode != HDMIFrameMode && HDMIFrameMode != 0))
-	{
-		// LOGW_print("HDMI IN resolution changed..");
-		HDMIFrameMode = hdmi_mode;
-		HDMImode = hdmi_res;
-		return VI_HDMI_CHANGE_RES;
-	}
-	else
-	{
-		HDMIFrameMode = hdmi_mode;
-		HDMImode = hdmi_res;
-		return VI_HDMI_READY;
-	}
-	
+    if((hdmi_res != HDMImode && HDMImode != 0)
+        || (hdmi_mode != HDMIFrameMode && HDMIFrameMode != 0))
+    {
+        // LOGW_print("HDMI IN resolution changed..");
+        HDMIFrameMode = hdmi_mode;
+        HDMImode = hdmi_res;
+        return VI_HDMI_CHANGE_RES;
+    }
+    else
+    {
+        HDMIFrameMode = hdmi_mode;
+        HDMImode = hdmi_res;
+        return VI_HDMI_READY;
+    }
+    
 }
 
 int switch_hdmi_resolution()
@@ -246,14 +246,13 @@ void Phidi_AACLC_Init(HI_VOID)
 	}
     
     aacEncoder_SetParam(hAacEncoder, AACENC_AOT, 			AOT_AAC_LC);//AOT_AAC_LC AOT_PS AOT_SBR
-	aacEncoder_SetParam(hAacEncoder, AACENC_BITRATE, 		128000);
+	aacEncoder_SetParam(hAacEncoder, AACENC_BITRATE, 		320002);
 	aacEncoder_SetParam(hAacEncoder, AACENC_SAMPLERATE, 	48000);
 	aacEncoder_SetParam(hAacEncoder, AACENC_CHANNELMODE,	MODE_2);	//AOUT_CHANS_MONO
 	aacEncoder_SetParam(hAacEncoder, AACENC_GRANULE_LENGTH, 1024);		//960 performance is better than 1024
-//	aacEncoder_SetParam(hAacEncoder, AACENC_SBR_MODE, 0);				//Disable Spectral Band Replication
-//  aacEncoder_SetParam(hAacEncoder, AACENC_SBR_RATIO, 0);				//close download sampled SBR
-    aacEncoder_SetParam(hAacEncoder, AACENC_TRANSMUX, 		2);
-    
+    aacEncoder_SetParam(hAacEncoder, AACENC_CHANNELORDER, 1);//set the wav channel order
+    aacEncoder_SetParam(hAacEncoder, AACENC_TRANSMUX, TT_MP4_ADTS);
+
     if (aacEncEncode(hAacEncoder, NULL, NULL, NULL, NULL) != AACENC_OK) 
 		printf("Unable to initialize the encoder\r\n");
 }  
@@ -657,12 +656,11 @@ HI_S32 Phidi_VENC_UnInit(HI_VOID)
 }
 
 //	Audio init
-HI_S32 Phidi_AENC_Init(HI_VOID)
+HI_S32 Phidi_AI_Init(HI_VOID)
 {
 	HI_S32 		s32Ret = 0;
 	AUDIO_DEV   AiDev = PHIDI_AUDIO_AI_DEV;
 	AI_CHN      AiChn	= 0;
-	AENC_CHN    AeChn = 0;
 		
     AIO_ATTR_S stAioAttr;
 
@@ -722,67 +720,18 @@ HI_S32 Phidi_AENC_Init(HI_VOID)
             LOGE_print("HI_MPI_AI_EnableChn(%d,%d) failed with %#x", AiDev, i, s32Ret);
             return -1;    
         }
-        
-        #if 1
-        {
-            s32Ret = SAMPLE_COMM_AUDIO_CreatTrdAiAenc(AiDev, i, AeChn);
-            if (s32Ret != HI_SUCCESS)
-            {
-                LOGE_print("SAMPLE_COMM_AUDIO_CreatTrdAiAenc s32Ret:%d", s32Ret);
-                return HI_FAILURE;
-            }
-        }
-        #else
-        {
-            /* create aenc chn*/
-            s32Ret = HI_MPI_AENC_CreateChn(i, &stAencAttr);
-            if (s32Ret != HI_SUCCESS)
-            {
-                LOGE_print("%s: HI_MPI_AENC_CreateChn(%d) failed with %#x!", __FUNCTION__,
-                       i, s32Ret);
-                return HI_FAILURE;
-            }        
-            LOGI_print("after HI_MPI_AENC_CreateChn");
-             
-            /********************************************
-              step 4: Aenc bind Ai Chn
-            ********************************************/
-            MPP_CHN_S stSrcChn,stDestChn;
-            
-            stSrcChn.enModId = HI_ID_AI;
-            stSrcChn.s32DevId = AiDev;
-            stSrcChn.s32ChnId = i;
-            stDestChn.enModId = HI_ID_AENC;
-            stDestChn.s32DevId = 0;
-            stDestChn.s32ChnId = i;
-            
-            s32Ret = HI_MPI_SYS_Bind(&stSrcChn, &stDestChn);
-            if (s32Ret != HI_SUCCESS)
-            {
-                LOGE_print("Ai(%d,%d) bind to AencChn:%d failed!",AiDev , i, i);
-                return s32Ret;
-            }
-            
-            LOGI_print("Ai(%d,%d) bind to AencChn:%d ok!",AiDev , i, i);
-        }
-        #endif
     }
     
     return s32Ret;
 }	
-HI_S32 Phidi_AENC_UnInit(HI_VOID)
+
+HI_S32 Phidi_AI_UnInit(HI_VOID)
 {
 	HI_S32 		s32Ret = 0;
 	AUDIO_DEV   AiDev = PHIDI_AUDIO_AI_DEV;
 	AI_CHN      AiChn	= 0;
-	AENC_CHN    AeChn = 0;
 
-	SAMPLE_COMM_AUDIO_DestoryTrdAi(AiDev, AiChn);
-	
-	SAMPLE_COMM_AUDIO_AencUnbindAi(AiDev, AiChn, AeChn);
-	s32Ret = HI_MPI_AENC_DestroyChn(AeChn);
-
-	s32Ret = HI_MPI_AI_DisableChn(AiDev, AeChn);
+	s32Ret = HI_MPI_AI_DisableChn(AiDev, AiChn);
 	s32Ret = HI_MPI_AI_Disable(AiDev);
 
 	LOGI_print("===========");
@@ -997,7 +946,7 @@ HI_S32 Phidi_AOUT_HDMI_UnInit(HI_VOID)
 {
     HI_S32 s32Ret;
     AUDIO_DEV   AiDev = PHIDI_AUDIO_AI_DEV;
-    AI_CHN      AiChn = 1;
+    AI_CHN      AiChn = 0;
     AUDIO_DEV   AoDev = PHIDI_AUDIO_AO_DEV;
     AO_CHN      AoChn = 0;
 
@@ -1024,10 +973,10 @@ HI_S32 Phidi_AOUT_HDMI_UnInit(HI_VOID)
 
 HI_VOID Phidi_Globle_UnInit(HI_VOID)
 {
-	Phidi_AENC_UnInit();
 	Phidi_VENC_UnInit();
 	Phidi_AOUT_HDMI_UnInit();
 	Phidi_VOUT_HDMI_UnInit();
+    Phidi_AI_UnInit();
 }
 
 void COMM_VENC_UseStream(VENC_CHN VeChn, PAYLOAD_TYPE_E enType, VENC_STREAM_S *pstStream)
@@ -1416,7 +1365,7 @@ int main(int argc, char *argv[])
 		Phidi_Globle_UnInit();
 		
 		s32Ret = Phidi_VENC_Init();
-	    s32Ret = Phidi_AENC_Init();
+	    s32Ret = Phidi_AI_Init();
 		Phidi_VOUT_HDMI_Init();
 		Phidi_AOUT_HDMI_Init();
 
