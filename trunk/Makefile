@@ -6,12 +6,18 @@ rel:
 	@cd mpp/sample/phidi;   make
 	@cd record;    make
 	@cd output/;    $(STRIP) phidi mp4file
-#	-@./cp_to_rftp.sh
+	-@./cp_to_rftp.sh
 
 phidi:
 	-@mkdir output
 	@cd mpp/sample/phidi/;    make
 	@cd output/;    $(STRIP) phidi
+	-@./cp_to_rftp.sh
+	
+record:
+	-@mkdir output
+	@cd record/;    make
+	@cd output/;    $(STRIP) mp4file
 	-@./cp_to_rftp.sh
 	
 wm8960:
