@@ -35,6 +35,11 @@ extern "C"{
 
 HANDLE_AACENCODER hAacEncoder;
 VIDEO_NORM_E gs_enNorm = VIDEO_ENCODING_MODE_NTSC;
+#define VPSS_BSTR_CHN     		0
+#define VPSS_LSTR_CHN     		1
+//#define VENC_MAX_CHN_NUM  2
+
+#define MAX_FRAME_LEN (1024*1024)
 
 static PAYLOAD_TYPE_E gs_enPayloadType = PT_LPCM;//PT_AAC;//PT_G711A;//PT_LPCM;
 static SAMPLE_VENC_GETSTREAM_PARA_S gs_stVPara;
@@ -242,7 +247,7 @@ int switch_hdmi_resolution()
 void Phidi_AACLC_Init(HI_VOID)
 {    
     if (aacEncOpen(&hAacEncoder, 0, 2) != AACENC_OK) {
-		printf("Unable to open encoder\n");
+		LOGE_print("Unable to open encoder");
 	}
     
     aacEncoder_SetParam(hAacEncoder, AACENC_AOT, 			AOT_AAC_LC);//AOT_AAC_LC AOT_PS AOT_SBR
@@ -254,7 +259,9 @@ void Phidi_AACLC_Init(HI_VOID)
     aacEncoder_SetParam(hAacEncoder, AACENC_TRANSMUX, TT_MP4_ADTS);
 
     if (aacEncEncode(hAacEncoder, NULL, NULL, NULL, NULL) != AACENC_OK) 
-		printf("Unable to initialize the encoder\r\n");
+		LOGE_print("Unable to initialize the encoder");
+
+	LOGI_print("Phidi_AACLC_Init done");
 }  
 
 
@@ -266,7 +273,7 @@ HI_S32 Phidi_AOUT_HdmiSet(AIO_ATTR_S stHdmiAoAttr)
 	s32Ret = HI_MPI_HDMI_SetAVMute(HI_HDMI_ID_0, HI_TRUE);
     if(HI_SUCCESS != s32Ret)
     {
-        printf("[Func]:%s [Line]:%d [Info]:%s\n", __FUNCTION__, __LINE__, "failed");
+        LOGE_print("HI_MPI_HDMI_SetAVMute faild");
         return HI_FAILURE;
     }
     HI_MPI_HDMI_GetAttr(HI_HDMI_ID_0, &stAttr);
@@ -288,11 +295,11 @@ HI_S32 Phidi_AOUT_HdmiSet(AIO_ATTR_S stHdmiAoAttr)
     s32Ret = HI_MPI_HDMI_SetAVMute(HI_HDMI_ID_0, HI_FALSE);
     if(HI_SUCCESS != s32Ret)
     {
-        printf("[Func]:%s [Line]:%d [Info]:%s\n", __FUNCTION__, __LINE__, "failed");
+		LOGE_print("HI_MPI_HDMI_SetAVMute faild");
         return HI_FAILURE;
     }
     
-    printf("HDMI start success.\n");
+    LOGI_print("HDMI start success.");
     return HI_SUCCESS;
 }
 
@@ -325,12 +332,14 @@ HI_S32 Phidi_System_Init(HI_VOID)
 		LOGE_print("system init failed with %d!", s32Ret);
 	}
 
+	LOGI_print("Phidi_System_Init done");
 	return s32Ret;
 }
 
 HI_VOID Phidi_System_UnInit(HI_VOID)
 {
 	SAMPLE_COMM_SYS_Exit();
+	LOGI_print("Phidi_System_UnInit done");
 }
 
 /******************************************************************************
@@ -615,6 +624,7 @@ HI_S32 Phidi_VENC_Init(HI_VOID)
     	LOGI_print("VENC_BindVpss vpssChn=%d vencChn=%d", VpssChn, VencChn);
     }
 
+	LOGI_print("Phidi_VENC_Init done");
 	return s32Ret;
 }
 
@@ -651,7 +661,7 @@ HI_S32 Phidi_VENC_UnInit(HI_VOID)
 	
     HI_MPI_VI_DisableChn(ViChn);
 	s32Ret = HI_MPI_VI_DisableDev(ViDev);
-	LOGI_print("===========");
+	LOGI_print("Phidi_VENC_UnInit done");
     return s32Ret;
 }
 
@@ -734,7 +744,7 @@ HI_S32 Phidi_AI_UnInit(HI_VOID)
 	s32Ret = HI_MPI_AI_DisableChn(AiDev, AiChn);
 	s32Ret = HI_MPI_AI_Disable(AiDev);
 
-	LOGI_print("===========");
+	LOGI_print("Phidi_AENC_UnInit done");
 	return s32Ret;
 }
 
@@ -754,7 +764,6 @@ HI_S32 Phidi_VOUT_HDMI_Init(HI_VOID)
 	HI_S32 s32Ret = HI_SUCCESS;
 	HI_U32 u32WndNum;
 	
-	printf("start vo HD0.\n");
 	VoDev = SAMPLE_VO_DEV_DHD0;
 	VoLayer = SAMPLE_VO_LAYER_VHD0;
 	u32WndNum = 1;
@@ -856,6 +865,7 @@ HI_S32 Phidi_VOUT_HDMI_Init(HI_VOID)
 		return HI_FAILURE;
 	}
 
+	LOGI_print("Phidi_VOUT_HDMI_Init done");
 	return HI_TRUE;
 }
 
@@ -875,6 +885,7 @@ HI_S32 Phidi_VOUT_HDMI_UnInit(HI_VOID)
 	
 	SAMPLE_COMM_VO_HdmiStop();
 
+	LOGI_print("Phidi_VOUT_HDMI_UnInit done");
 	return HI_TRUE;
 }
 
@@ -939,6 +950,7 @@ HI_S32 Phidi_AOUT_HDMI_Init(HI_VOID)
         }
     }
 
+	LOGI_print("Phidi_AOUT_HDMI_Init done");
 	return HI_TRUE;
 }
 
@@ -967,16 +979,18 @@ HI_S32 Phidi_AOUT_HDMI_UnInit(HI_VOID)
     }
 
 	//HDMI放在video的里面停止
-	LOGI_print("===========");
+	LOGI_print("Phidi_AOUT_HDMI_UnInit done");
 	return HI_TRUE;
 }
 
 HI_VOID Phidi_Globle_UnInit(HI_VOID)
 {
+    Phidi_AI_UnInit();
 	Phidi_VENC_UnInit();
 	Phidi_AOUT_HDMI_UnInit();
 	Phidi_VOUT_HDMI_UnInit();
-    Phidi_AI_UnInit();
+
+	LOGI_print("Phidi_Globle_UnInit done");
 }
 
 void COMM_VENC_UseStream(VENC_CHN VeChn, PAYLOAD_TYPE_E enType, VENC_STREAM_S *pstStream)
@@ -1101,7 +1115,7 @@ HI_VOID* COMM_VENC_GetVencStreamProc(void* param)
         FD_ZERO(&read_fds);
         FD_SET(VencFd[i], &read_fds);
 	
-        TimeoutVal.tv_sec  = 5;
+        TimeoutVal.tv_sec  = 1;
         TimeoutVal.tv_usec = 0;
         s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
         if (s32Ret < 0)
@@ -1179,6 +1193,7 @@ HI_VOID* COMM_VENC_GetVencStreamProc(void* param)
         }
     }
 
+	LOGI_print("COMM_VENC_GetVencStreamProc end");
 	return NULL;
 }
 
@@ -1214,7 +1229,7 @@ HI_VOID* COMM_AENC_GetAencStreamProc(void* param)
         FD_ZERO(&read_fds);
         FD_SET(AencFd, &read_fds);
 				
-        TimeoutVal.tv_sec  = 5;
+        TimeoutVal.tv_sec  = 1;
         TimeoutVal.tv_usec = 0;
         s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
         if (s32Ret < 0)
@@ -1273,7 +1288,7 @@ HI_VOID* COMM_AENC_GetAencStreamProc(void* param)
 
 				// LOGI_print("aacsize:%d", out_args.numOutBytes);
 				// if(pAudio == NULL) pAudio = fopen("/mnt/usb1/test.Audio", "wb");
-                if(pAudio != NULL) fwrite(stStream.pStream,1,stStream.u32Len, pAudio);
+//                if(pAudio != NULL) fwrite(stStream.pStream,1,stStream.u32Len, pAudio);
                 // if(pAudio != NULL) fwrite(outbuf, 1, out_args.numOutBytes, pAudio);
 
 				stStream.pStream = outbuf;
@@ -1293,6 +1308,7 @@ HI_VOID* COMM_AENC_GetAencStreamProc(void* param)
     }
 	if(pAudio != NULL) fclose(pAudio);
 
+	LOGI_print("COMM_AENC_GetAencStreamProc end");
 	return NULL;
 }
 
@@ -1304,7 +1320,8 @@ void COMM_HandleSig(HI_S32 signo)
         SAMPLE_COMM_SYS_Exit();
         LOGE_print("mprogram exit abnormally!");
     }
-	
+
+	LOGI_print("signo:%d", signo);
     exit(0);
 }
 
@@ -1328,7 +1345,7 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		int viStatus = switch_vi_resolution();
-		if(viStatus == VI_HDMI_EMPTY	//开始没插上和被拔掉之后
+		if(viStatus == VI_HDMI_EMPTY	// 开始没插上和被拔掉之后
 			|| (g_phidi_on == 1 && viStatus == VI_HDMI_READY))	//运行起来后，没有修改
 		{
 			usleep(20*1000);
@@ -1337,6 +1354,9 @@ int main(int argc, char *argv[])
 
 		if(viStatus == VI_HDMI_CHANGE_RES || viStatus == VI_HDMI_CHANGE_EMPTY)
 		{
+			//做一些重置工作
+			Phidi_Globle_UnInit();
+
 			if(gs_VencPid != 0)
 			{//退出线程
 				gs_stVPara.bThreadStart = HI_FALSE;
@@ -1350,9 +1370,7 @@ int main(int argc, char *argv[])
 				pthread_join(gs_AencPid, NULL);
 				LOGI_print("COMM_AENC_GetAencStreamProc stop done");
 			}
-
-			//做一些重置工作
-			Phidi_Globle_UnInit();
+			
 			if(viStatus == VI_HDMI_CHANGE_EMPTY)
 			{
 				g_phidi_on = 0;
