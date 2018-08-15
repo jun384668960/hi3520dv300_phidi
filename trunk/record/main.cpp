@@ -214,8 +214,7 @@ int main(int argc, const char *argv[])
 	init_key_sighandle();
 	pthread_create(&led_pid, 0, init_led_sighandle, NULL);
 	
-	shm_stream_t* audio_stream = shm_stream_create("rec_audioread", "audiostream", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_AUDIO_MAX_SIZE, SHM_STREAM_READ);
-	shm_stream_t* main_stream = shm_stream_create("rec_mainread", "mainstream", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_VIDEO_MAX_SIZE, SHM_STREAM_READ);
+	shm_stream_t* g_mediahandle = shm_stream_create("rec_mediaread", "media", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_VIDEO_MAX_SIZE, SHM_STREAM_READ);
 	unsigned char* pData = (unsigned char*)malloc(1024*1024);
 	while(1)
 	{
@@ -236,21 +235,21 @@ int main(int argc, const char *argv[])
 			
 			MP4Mux_Open(filename);
 
-			shm_stream_sync(main_stream);
+			shm_stream_sync(g_mediahandle);
 			while(g_recStart)
 			{
 				frame_info info;
 				unsigned char* frame;
 				unsigned int length;
-				int ret = shm_stream_get(main_stream, &info, &frame, &length);
+				int ret = shm_stream_get(g_mediahandle, &info, &frame, &length);
 				if(ret == 0)
 				{
 //					LOGI_print("shm_stream_get viedeo info.lenght:%d info.pts:%llu", info.length, info.pts);
 					//如果还没有取得I帧，并且当前非I帧
-					if(!Iwait && info.key == 1)
+					if(!Iwait && info.key == 1)	//音频已经全部设置为key = 1
 					{
 						LOGW_print("Wait for I frame Iwait:%d info.key:%d", Iwait, info.key);
-						shm_stream_post(main_stream);
+						shm_stream_post(g_mediahandle);
 					}
 					else
 					{
@@ -264,8 +263,6 @@ int main(int argc, const char *argv[])
 						Iwait = true;
 						if(!vTrackSet)
 						{
-							shm_stream_sync(audio_stream);
-							
 							AM_VIDEO_INFO pvInfo;
 							AM_AUDIO_INFO paInfo;
 							
@@ -305,37 +302,22 @@ int main(int argc, const char *argv[])
 							LOGW_print("record time:%d > max:%d", rec_time, g_rec_time);
 							break;
 						}
-						
-						result = MP4Mux_WriteVideoData(pData, length, info.pts/1000);
-						shm_stream_post(main_stream);
-						if(result != 0)
-						{	
-							//直到下一个I帧出现
-							IwaitOver = true;
-						}
-					}
-					
-					while(g_recStart)
-					{
-						ret = shm_stream_get(audio_stream, &info, &frame, &length);
-						if(ret == 0)
+
+						if(info.type == 96/*H264*/)
 						{
-//							LOGI_print("shm_stream_get audio info.lenght:%d info.pts:%llu", info.length, info.pts);
-							if(!vTrackSet && !aTrackSet)
-							{
-								shm_stream_post(audio_stream);
-							}
-							else
-							{
-								memcpy(pData, frame, length);
-								MP4Mux_WriteAudioData(pData, length, info.pts/1000);
-								shm_stream_post(audio_stream);
+							result = MP4Mux_WriteVideoData(pData, length, info.pts/1000);
+							if(result != 0)
+							{	
+								//直到下一个I帧出现
+								IwaitOver = true;
 							}
 						}
 						else
 						{
-							break;
+							MP4Mux_WriteAudioData(pData, length, info.pts/1000);
+							
 						}
+						shm_stream_post(g_mediahandle);
 					}
 				}
 				else
@@ -353,10 +335,8 @@ int main(int argc, const char *argv[])
 	}
 
 	free(pData);
-	if(main_stream != NULL)
-		shm_stream_destory(main_stream);
-	if(audio_stream != NULL)
-		shm_stream_destory(audio_stream);
+	if(g_mediahandle != NULL)
+		shm_stream_destory(g_mediahandle);
 
 	g_ledPidStop = 1;
 	pthread_join(led_pid, NULL);

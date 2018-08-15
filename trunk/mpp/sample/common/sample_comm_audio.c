@@ -856,8 +856,8 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
                         continue;
                     }
                     
-                    extern shm_stream_t*    g_audiohandle;
-                    if(g_audiohandle != NULL)
+                    extern shm_stream_t*    g_mediahandle;
+                    if(g_mediahandle != NULL)
                     {
                         HI_U8* pData;
                         frame_info info;
@@ -870,7 +870,7 @@ void *SAMPLE_COMM_AUDIO_AiProc(void *parg)
                             info.length = out_args.numOutBytes;
                         }
                         
-                        int ret = shm_stream_put(g_audiohandle, info, pData, info.length);
+                        int ret = shm_stream_put(g_mediahandle, info, pData, info.length);
                         if(ret != 0)
                         {
                                 LOGE_print("shm_stream_put error");

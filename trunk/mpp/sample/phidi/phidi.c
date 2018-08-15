@@ -46,10 +46,10 @@ static SAMPLE_VENC_GETSTREAM_PARA_S gs_stVPara;
 static SAMPLE_VENC_GETSTREAM_PARA_S gs_stAPara;
 static pthread_t 		gs_VencPid = 0;
 static pthread_t 		gs_AencPid = 0;
-static shm_stream_t* 	g_handle = NULL;
-shm_stream_t* 	g_audiohandle = NULL;
 static unsigned char* 	g_frame = NULL;
 static unsigned int		g_phidi_on = 0;
+shm_stream_t* 	g_mediahandle = NULL;
+
 
 int		HDMIFrameMode = 0;
 int 	HDMImode = 0;
@@ -1011,7 +1011,7 @@ void COMM_VENC_UseStream(VENC_CHN VeChn, PAYLOAD_TYPE_E enType, VENC_STREAM_S *p
 			memcpy(&g_frame[total_length], data, len);
 			total_length += len;
 	    }
-		if(g_handle != NULL)
+		if(g_mediahandle != NULL)
 		{
 			frame_info info;
 			info.type = enType;
@@ -1022,7 +1022,7 @@ void COMM_VENC_UseStream(VENC_CHN VeChn, PAYLOAD_TYPE_E enType, VENC_STREAM_S *p
 			info.pts = pstStream->pstPack[pstStream->u32PackCount-1].u64PTS;
 			info.length = total_length;
 			
-			int ret = shm_stream_put(g_handle, info, g_frame, total_length);
+			int ret = shm_stream_put(g_mediahandle, info, g_frame, total_length);
 			if(ret != 0)
 			{
 //				LOGE_print("shm_stream_put error");
@@ -1039,7 +1039,7 @@ void COMM_AENC_UseStream(HI_S32 AeChn, AUDIO_STREAM_S *pstStream)
 {
 	if(AeChn == 0/* && gs_enPayloadType == PT_G711A*/)
 	{
-		if(g_audiohandle != NULL)
+		if(g_mediahandle != NULL)
 		{
 			HI_U8* pData;
 			frame_info info;
@@ -1067,7 +1067,7 @@ void COMM_AENC_UseStream(HI_S32 AeChn, AUDIO_STREAM_S *pstStream)
 //			if(pAudio == NULL) pAudio = fopen("test.Audio", "wb");
 //			if(pAudio != NULL) fwrite(pData, 1, info.length, pAudio);
 			
-			int ret = shm_stream_put(g_audiohandle, info, pData, info.length);
+			int ret = shm_stream_put(g_mediahandle, info, pData, info.length);
 			if(ret != 0)
 			{
 //				LOGE_print("shm_stream_put error");
@@ -1337,9 +1337,7 @@ int main(int argc, char *argv[])
     signal(SIGTERM, COMM_HandleSig);
 	
 	g_frame = (unsigned char*)malloc(MAX_FRAME_LEN);
-	g_handle = shm_stream_create("write", "mainstream", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_VIDEO_MAX_SIZE, SHM_STREAM_WRITE);
-	g_audiohandle = shm_stream_create("write", "audiostream", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_AUDIO_MAX_SIZE, SHM_STREAM_WRITE);
-
+	g_mediahandle = shm_stream_create("write", "media", STREAM_MAX_USER, STREAM_MAX_FRAMES, STREAM_VIDEO_MAX_SIZE, SHM_STREAM_WRITE);
 	Phidi_System_Init();
 	Phidi_AACLC_Init();
 	while(1)
@@ -1406,8 +1404,7 @@ int main(int argc, char *argv[])
     aacEncClose(&hAacEncoder);
 	Phidi_System_UnInit();
 	
-	shm_stream_destory(g_handle);
-	shm_stream_destory(g_audiohandle);
+	shm_stream_destory(g_mediahandle);
 	free(g_frame);
     if (HI_SUCCESS == s32Ret)
         LOGW_print("program exit normally!");
