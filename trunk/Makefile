@@ -25,7 +25,7 @@ wm8960:
 	@cd mpp/extdrv/wm8960/;    make
 	-@./cp_to_rftp.sh
 	
-it6801:
+hdmi:
 	-@mkdir output
 	@cd mpp/extdrv/it6801/;    make
 	-@./cp_to_rftp.sh

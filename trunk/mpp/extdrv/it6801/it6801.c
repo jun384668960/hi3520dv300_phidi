@@ -11,9 +11,7 @@
 //#include "config.h"
 //#include "IO.h"
 #include "Mhlrx.h"
-
-
-
+#include "srt.h"
 
 static struct timer_list checker;
 
@@ -261,30 +259,38 @@ static struct miscdevice it6801_dev =
 
 static int __init it6801_init(void)
 {
-	//unsigned char ret;
-
-    if (misc_register(&it6801_dev))
-    {
-        printk("ERROR: could not register it6801 devices\n");
+	if (srt_check() == -1)
+	{
+        printk("ERROR: srt check failed!\n");
 		return -1;
-    }
-    
-    hi_dev_init();
-    it6802HPDCtrl(1,0);	// HDMI port , set HPD = 0
+	}
+	else
+	{
+	    if (misc_register(&it6801_dev))
+	    {
+	        printk("ERROR: could not register it6801 devices\n");
+			return -1;
+	    }
+	    else
+	    {
+		    hi_dev_init();
+		    it6802HPDCtrl(1,0);	// HDMI port , set HPD = 0
 
-		delay1ms(1000);	//for power sequence
-		
-		//printk("IT6802_fsm_init\n");
-		IT6802_fsm_init();//initialize registers
+			delay1ms(1000);	//for power sequence
+			
+			//printk("IT6802_fsm_init\n");
+			IT6802_fsm_init();//initialize registers
 
 
-		init_timer(&checker);
-		checker.function = (void *)checker_handler;
+			init_timer(&checker);
+			checker.function = (void *)checker_handler;
 
-		checker.expires =  200 + jiffies;
-		add_timer(&checker);
+			checker.expires =  200 + jiffies;
+			add_timer(&checker);
 
-    return 0;
+		    return 0;
+	    }
+	}
 }
 
 static void __exit it6801_exit(void)
