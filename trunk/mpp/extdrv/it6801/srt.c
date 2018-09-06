@@ -471,17 +471,6 @@ unsigned char Amba_app_srt_edesen_crypt(unsigned char *ck235_des_data,unsigned c
  return 0;
 }
 
-
-
-
-
-
-
-#define SRT_DEV_ADRR  0xc0
-#define SRT_ADR_WRITE  0xc0
-#define SRT_ADR_READ    0xc1
-
-
 static int srt_idc_write(UINT16 Addr,UINT8 *pdata, int data_size)
 {
 	UINT8 offset = (UINT8)(Addr & 0x00ff);
@@ -504,15 +493,17 @@ static void srt_msleep(unsigned int ms)
 int srt_check(void)
 {
 	//wite 8byte data
-	UINT8 randata[8]={0x1A,0x2f,0x3f,0xff,0xEF,0xEA,0xAA,0x56};
+	const UINT8 randata[8]={0x1A,0x2f,0x3f,0xff,0xEF,0xEA,0xAA,0x56};
 	//write 10byte data
 	UINT8 encdata[10]={0};
 	//read  8byte data
 	UINT8 decdata[8]={0};
 
 	int i;
-	int retry_i2c = 100;
+	int retry_i2c = 10;
 	int result = 0;
+
+	DBGMSG("%s\n", __func__);
 
 	for(i=0; i < retry_i2c; i++)
 	{

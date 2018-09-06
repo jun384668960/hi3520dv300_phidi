@@ -60,10 +60,23 @@ dkms.conf
 *.S
 *Image
 # special file 
-mpp/extdrv/btn_drv/btn_drv_test
-mpp/extdrv/led_drv/led_drv_test
+trunk/mpp/extdrv/btn_drv/btn_drv_test
+trunk/mpp/extdrv/led_drv/led_drv_test
 trunk/cp_to_rftp.sh
 trunk/mpp/sample/phidi/phidi
 trunk/record/mp4file
 trunk/osdrv
 trunk/output/
+trunk/mpp/extdrv/tp2823/
+trunk/mpp/sample/audio/
+trunk/mpp/sample/hifb/
+trunk/mpp/sample/it/
+trunk/mpp/sample/ive/
+trunk/mpp/sample/region/
+trunk/mpp/sample/tde/
+trunk/mpp/sample/vda/
+trunk/mpp/sample/vdec/
+trunk/mpp/sample/venc/
+trunk/mpp/sample/vio/
+trunk/mpp/tools/
+trunk/drv/

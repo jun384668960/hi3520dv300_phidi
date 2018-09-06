@@ -81,10 +81,9 @@ static struct i2c_board_info edid_info =
     I2C_BOARD_INFO("edid_i2c", 0xA8),
 };
 
-#define SRT_ADDR (0x60)//8bit:c0/c4,depends on hw
 static struct i2c_board_info srt_info =
 {
-    I2C_BOARD_INFO("srt_i2c", SRT_ADDR),
+    I2C_BOARD_INFO("srt_i2c", SRT_DEV_ADRR),
 };
 
 static struct i2c_client* hdmi_client;
@@ -185,11 +184,11 @@ void edid_read(BYTE offset,BYTE byteno,BYTE *p_data)
 
 void edid_write(BYTE offset,BYTE byteno,BYTE *p_data)
 {
-	BYTE i;
- 	struct i2c_client* client = edid_client;
-  unsigned char buf[2];
-  int ret=0;
-  
+    BYTE i;
+    	struct i2c_client* client = edid_client;
+    unsigned char buf[2];
+    int ret=0;
+
   //printk("i2c edid write\n");
  
 	for(i = 0; i < byteno; ++i)
@@ -207,79 +206,130 @@ void edid_write(BYTE offset,BYTE byteno,BYTE *p_data)
 	}
 }
 
-void srt_read(BYTE offset,BYTE byteno,BYTE *p_data)
+static int srt_read(BYTE offset,BYTE byteno,BYTE *p_data)
 {
     BYTE i;
     struct i2c_client* client = srt_client;
-  unsigned char buf[2];
-  int ret;
+    unsigned char buf[2];
+    int ret;
   
   //printk("i2c read\n");
  
     for(i = 0; i < byteno; ++i)
     {
-        
-    buf[0] = offset;
-    ret = i2c_master_recv(client, buf, 1);
-    if (ret >= 0)
-    {
-        p_data[i] = buf[0];
+        buf[0] = offset;
+        ret = i2c_master_recv(client, buf, 1);
+        if (ret >= 0)
+        {
+            p_data[i] = buf[0];
+            printk("%s:i2c read success,offset = 0x%x, ret = %d, i = %d, buf[0x%x,0x%x]\n",
+                __func__, offset, ret, i, buf[0], buf[1]);
+        }
+        else
+        {
+            printk("%s:i2c read failed\n",__func__);
+            return -1;
+        }
+        // ++offset;
     }
-        ++offset;
 
-    }
-
+    return 0;
 }
 
-void srt_write(BYTE offset,BYTE byteno,BYTE *p_data)
+#if 1
+static int srt_write(BYTE offset,BYTE byteno,BYTE *p_data)
+{
+    if (p_data == NULL)
+    {
+        printk("%s: null pointer!!!",__func__);
+        return -1;
+    }
+    else
+    {
+        struct i2c_client* client = srt_client;
+        unsigned char buf[9];
+        int ret = 0;
+        int i;
+        // extern int hi_i2c_dma_write(const struct i2c_client *client, unsigned int data_addr, \
+        unsigned int reg_addr, unsigned int reg_addr_num, \
+        unsigned int length);
+
+        buf[0] = offset;
+        memcpy(&buf[1], p_data, byteno);
+        for (i = 0; i < 9; ++i)
+        {
+            printk("buf[%d] = 0x%x\n",i,buf[i]);
+        }
+        // client->flags |= I2C_M_RECV_LEN;
+        // ret = i2c_master_send(client, buf, 9);
+        ret = hi_i2c_dma_write(client, (unsigned int)p_data,  0xa0, 1, 8);
+        if(ret != 0)
+        {   
+            printk("%s:i2c write failed,ret = %d\n",__func__, ret);
+            return -1;
+        }
+        else
+        {   
+            printk("%s:i2c write success,ret = %d\n",__func__, ret);
+            // printk("%s:i2c write success,addr = 0x%x\n",__func__, buf[0]);
+            return 0;
+        }
+    }
+}
+#else
+static int srt_write(BYTE offset,BYTE byteno,BYTE *p_data)
 {
     BYTE i;
     struct i2c_client* client = srt_client;
-  unsigned char buf[2];
-  int ret=0;
-  
-  //printk("i2c write \n");
- 
-    
+    unsigned char buf[2];
+    int ret=0;
+
     for(i = 0; i < byteno; ++i)
     {
-        buf[0] = offset + i;
-    buf[1] = p_data[i];
+        buf[0] = offset;
+        // buf[0] = offset + i;
+        buf[1] = p_data[i];
 
-    ret = i2c_master_send(client, buf, 2);
-    if(ret !=2)
-    {   
-        printk("i2c write failed\n");
-    } 
-
+        ret = i2c_master_send(client, buf, 2);
+        if(ret != 2)
+        {   
+            printk("%s:i2c write failed,ret = %d\n",__func__, ret);
+            return -1;
+        }
+        else
+        {   
+            printk("%s:i2c write success,addr = 0x%x, data = 0x%x\n",__func__, buf[0], buf[1]);
+        }
     }
-}
 
+    return 0;
+}
+#endif
 SYS_STATUS i2c_write_byte( BYTE address,BYTE offset,BYTE byteno,BYTE *p_data,BYTE device )
 {
  
     if(address == 0x90) {
         hdmi_write(offset,byteno,p_data);
-    } else if (address == SRT_ADDR) {
-        hdmi_write(offset,byteno,p_data);
+        return ER_SUCCESS;
+    } else if (address == SRT_DEV_ADRR) {
+        return srt_write(offset,byteno,p_data);
     } else {
         edid_write(offset,byteno,p_data);
+        return ER_SUCCESS;
     }
-
-	return ER_SUCCESS;
 }
 
 SYS_STATUS i2c_read_byte( BYTE address,BYTE offset,BYTE byteno,BYTE *p_data,BYTE device )
 {
     if(address == 0x90) {
         hdmi_read(offset,byteno,p_data);
-    } else if (address == SRT_ADDR) {
-        edid_read(offset,byteno,p_data);
+        return ER_SUCCESS;
+    } else if (address == SRT_DEV_ADRR) {
+        return srt_read(offset,byteno,p_data);
     } else {
         edid_read(offset,byteno,p_data);
+        return ER_SUCCESS;
     }
-
-  return ER_SUCCESS;
 }
 
 
@@ -396,31 +446,29 @@ unsigned char r2(unsigned char address)
 */
 void hi_dev_init(void)
 {
+    struct i2c_adapter* i2c_adap_2;
     struct i2c_adapter* i2c_adap_0;
     struct i2c_adapter* i2c_adap_1;
-    struct i2c_adapter* i2c_adap_2;
 
     // use i2c0
+    i2c_adap_2 = i2c_get_adapter(0);
     i2c_adap_0 = i2c_get_adapter(0);
     i2c_adap_1 = i2c_get_adapter(0);
-    i2c_adap_2 = i2c_get_adapter(0);
     
+    srt_client = i2c_new_device(i2c_adap_2, &srt_info);
     hdmi_client = i2c_new_device(i2c_adap_0, &hdmi_info);
     edid_client = i2c_new_device(i2c_adap_1, &edid_info);
-    srt_client = i2c_new_device(i2c_adap_2, &srt_info);
-		
-		
-    //printk(" hi_dev_init end\n");
-		//printf("0x2 : 0x%x\n",r(0x2));
-		//printf("0x3 : 0x%x\n",r(0x3));
-		//printf("0x4 : 0x%x\n",r(0x4));
-		
-    //return 0;
+    
+    i2c_put_adapter(i2c_adap_2);
+    i2c_put_adapter(i2c_adap_0);
+    i2c_put_adapter(i2c_adap_1);
 }
 
 void hi_dev_exit(void)
 {
-    //i2c_unregister_device(hdmi_client);
+    i2c_unregister_device(srt_client);
+    i2c_unregister_device(hdmi_client);
+    i2c_unregister_device(edid_client);
 }
 
 /*

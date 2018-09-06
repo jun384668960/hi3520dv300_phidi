@@ -259,21 +259,21 @@ static struct miscdevice it6801_dev =
 
 static int __init it6801_init(void)
 {
-	if (srt_check() == -1)
-	{
-        printk("ERROR: srt check failed!\n");
+    if (misc_register(&it6801_dev))
+    {
+        printk("ERROR: could not register it6801 devices\n");
 		return -1;
-	}
-	else
-	{
-	    if (misc_register(&it6801_dev))
-	    {
-	        printk("ERROR: could not register it6801 devices\n");
+    }
+    else
+    {
+	    hi_dev_init();
+		if (srt_check() == -1)
+		{
+	        printk("ERROR: srt check failed!\n");
 			return -1;
-	    }
-	    else
-	    {
-		    hi_dev_init();
+		}
+		else
+		{
 		    it6802HPDCtrl(1,0);	// HDMI port , set HPD = 0
 
 			delay1ms(1000);	//for power sequence
@@ -288,15 +288,17 @@ static int __init it6801_init(void)
 			checker.expires =  200 + jiffies;
 			add_timer(&checker);
 
+	        printk("srt check success!\n");
 		    return 0;
-	    }
-	}
+		}
+    }
 }
 
 static void __exit it6801_exit(void)
 {
 	
     misc_deregister(&it6801_dev);
+    hi_dev_exit();
 }
 
 module_init(it6801_init);

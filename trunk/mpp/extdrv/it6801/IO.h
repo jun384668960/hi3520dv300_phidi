@@ -13,6 +13,11 @@
 #define _IO_h_
 #include "typedef.h"
 
+// #define SRT_ADDR (0xc0)
+#define SRT_DEV_ADRR  0xc0 //8bit:c0/c4,depends on hw
+#define SRT_ADR_WRITE  0xc0
+#define SRT_ADR_READ    0xc1
+
 
 #ifdef SUPPORT_UART_CMD
 void UartCommand();
@@ -28,6 +33,7 @@ void delay1ms(USHORT ms);
 SYS_STATUS i2c_write_byte( BYTE address,BYTE offset,BYTE byteno,BYTE *p_data,BYTE device );
 SYS_STATUS i2c_read_byte( BYTE address,BYTE offset,BYTE byteno,BYTE *p_data,BYTE device );
 void hi_dev_init(void);
+void hi_dev_exit(void);
 
 //#define hdmirxrd(x) HDMI_IIC_Read(x)
 //#define hdmirxwr(x,y) HDMI_IIC_Write(x,y)
