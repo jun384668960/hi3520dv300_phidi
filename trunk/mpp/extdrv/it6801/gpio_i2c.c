@@ -1,9 +1,10 @@
-#include "EnDe.h"
+// #include "EnDe.h"
+#include "typedef.h"
 
 extern const char gpio_fm_i2c_scl_pin;
 extern const char gpio_fm_i2c_sda_pin;
 
-void HZ008DelayMs(kal_uint32 data);
+void HZ008DelayMs(uint data);
 
 #define HZ008_SDA	gpio_fm_i2c_sda_pin
 #define HZ008_SCL	gpio_fm_i2c_scl_pin
@@ -31,7 +32,7 @@ void i2c_init(void)
 	HZ008DelayMs(100);
 }
 
-void HZ008DelayMs(kal_uint32 data)
+void HZ008DelayMs_51(uint data)
 {
 	unsigned char i;
 	while(data--)
@@ -39,7 +40,13 @@ void HZ008DelayMs(kal_uint32 data)
 		for(i=0;i<5000;i++){}  
 	}
 }
-void HZ008Delay(kal_uint32 data)
+
+void HZ008DelayMs(uint ms)
+{
+	msleep(ms);
+}
+
+void HZ008Delay(uint data)
 {
 	unsigned char i;
 	while(data--)
@@ -125,7 +132,7 @@ unsigned char HZ008_i2c_write_byte(unsigned char data)
 	ack = GPIO_ReadIO(HZ008_SDA); /// ack    
 
 	
-	dbg_print(" _i2c_write_byte, ack = %d \r\n", ack);
+	printk(" _i2c_write_byte, ack = %d \r\n", ack);
 	I2C_DELAY;
 	SCL_LOW;
 	SDA_OUT;
@@ -203,7 +210,7 @@ unsigned char HZ008_i2c_write(unsigned char device_addr, unsigned char sub_addr,
 	{
 		HZ008_i2c_stop();
 		#if PRINTFMODE
-		dbg_print("\n\rWRITE I2C : Write Error - Device Addr");
+		printk("\n\rWRITE I2C : Write Error - Device Addr");
 		#endif
 		return ERROR_CODE_WRITE_ADDR;
 	}
@@ -211,7 +218,7 @@ unsigned char HZ008_i2c_write(unsigned char device_addr, unsigned char sub_addr,
 	{
 		HZ008_i2c_stop();
 		#if PRINTFMODE
-		dbg_print("\n\rWRITE I2C : Write Error - Sub Addr");
+		printk("\n\rWRITE I2C : Write Error - Sub Addr");
 		#endif
 		return ERROR_CODE_WRITE_ADDR;
 	}
@@ -221,7 +228,7 @@ unsigned char HZ008_i2c_write(unsigned char device_addr, unsigned char sub_addr,
 		{
 			HZ008_i2c_stop();
 			#if PRINTFMODE
-			dbg_print("\n\rWRITE I2C : Write Error - TX Data");
+			printk("\n\rWRITE I2C : Write Error - TX Data");
 			#endif
 			return ERROR_CODE_WRITE_DATA;
 		}
@@ -237,7 +244,7 @@ unsigned char HZ008_i2c_read(unsigned char device_addr, unsigned char sub_addr, 
 	unsigned char i;
 
 	#if PRINTFMODE
-	dbg_print("\r\n_i2c_read");
+	printk("\r\n_i2c_read");
 	#endif
 	HZ008_i2c_start();
 	I2C_DELAY_LONG;
@@ -245,7 +252,7 @@ unsigned char HZ008_i2c_read(unsigned char device_addr, unsigned char sub_addr, 
 	{
 		HZ008_i2c_stop();
 		#if PRINTFMODE
-		dbg_print("\n\r Read I2C Write Error - device Addr\r\n");
+		printk("\n\r Read I2C Write Error - device Addr\r\n");
 		#endif
 		return ERROR_CODE_READ_ADDR;
 	}
@@ -253,7 +260,7 @@ unsigned char HZ008_i2c_read(unsigned char device_addr, unsigned char sub_addr, 
 	{
 		HZ008_i2c_stop();
 		#if PRINTFMODE
-		dbg_print("\n\rRead I2C Write Error - sub Addr \r\n");
+		printk("\n\rRead I2C Write Error - sub Addr \r\n");
 		#endif
 		return ERROR_CODE_READ_ADDR;
 	}
@@ -262,7 +269,7 @@ unsigned char HZ008_i2c_read(unsigned char device_addr, unsigned char sub_addr, 
 	{
 		HZ008_i2c_stop();
 		#if PRINTFMODE
-		dbg_print("\n\rRead I2C Write Error - sub Addr \r\n");
+		printk("\n\rRead I2C Write Error - sub Addr \r\n");
 		#endif
 		return ERROR_CODE_READ_ADDR;
 	}
@@ -312,29 +319,29 @@ unsigned char TestProtection(void)
 	error_code=0;
 	i2c_init();
 	HZ008DelayMs(200);
-	dbg_print("TestProtection begin\r\n");
-	dbg_print("tx_data: \r\n");
+	printk("TestProtection begin\r\n");
+	printk("tx_data: \r\n");
 	for(i=8; i!=0; i--)
 	{
 		tx_data[8-i]=GetRandom();
-		dbg_print("tx_data[%d] = %d \r\n",8-i, tx_data[8-i]);//
+		printk("tx_data[%d] = %d \r\n",8-i, tx_data[8-i]);//
 	}
 
 	value=HZ008_i2c_write(0XC0, tmp_sub_addr,tx_data , 8);
-	dbg_print("value=%x\r\n",value);
+	printk("value=%x\r\n",value);
 	HZ008DelayMs(500);
 
 	HZ008_i2c_read(0XC1, tmp_sub_addr,rx_data, 10);
-	dbg_print("rx_data: \r\n");
+	printk("rx_data: \r\n");
 	for(i = 0; i < 10; i++)
 	{
-		dbg_print("rx_data[%d] = %d   \r\n",i, rx_data[i]);
+		printk("rx_data[%d] = %d   \r\n",i, rx_data[i]);
 	}
 	EDesEn_Crypt(rx_data, ex_data);
-	dbg_print("ex_data: \r\n");
+	printk("ex_data: \r\n");
 	for(i = 0; i < 8; i++)
 	{
-		dbg_print("ex_data[%d] = %d \r\n",i, ex_data[i]);
+		printk("ex_data[%d] = %d \r\n",i, ex_data[i]);
 	}
 	for(i=0;i<8;i++)
 	{
@@ -343,17 +350,18 @@ unsigned char TestProtection(void)
 	}
 	if(error_code)
 	{
-		dbg_print(" EDesEn_Crypt failed \r\n");
+		printk(" EDesEn_Crypt failed \r\n");
 		return 0;
 	}
 	else
 	{
-		dbg_print(" EDesEn_Crypt pass \r\n");
+		printk(" EDesEn_Crypt pass \r\n");
 		return 1;
 	}
 	
 }
 
+#if 0
 void HZ008PowerOnCheck(void)
 {
 	unsigned char i = 0, v_result = 1;

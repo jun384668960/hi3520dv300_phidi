@@ -4,7 +4,7 @@ ifeq ($(PARAM_FILE), )
 endif
 
 obj-m := it6801drv.o
-it6801drv-objs := it6801.o it680x.o IO.o srt.o
+it6801drv-objs := it6801.o it680x.o IO.o srt.o gpio_i2c.o
 
 default:
 	@make -C $(LINUX_ROOT) M=$(PWD) modules
