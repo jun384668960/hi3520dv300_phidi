@@ -1,5 +1,12 @@
 // #include "EnDe.h"
 #include "typedef.h"
+#include <linux/gpio.h>
+#include "srt.h"
+
+#define ERROR_CODE_READ_ADDR (-1)
+#define ERROR_CODE_WRITE_ADDR (-2)
+#define ERROR_CODE_WRITE_DATA (-3)
+#define ERROR_CODE_TRUE (0)
 
 extern const char gpio_fm_i2c_scl_pin;
 extern const char gpio_fm_i2c_sda_pin;
@@ -12,6 +19,25 @@ void HZ008DelayMs(uint data);
 #define I2C_WRITE	0
 #define I2C_READ	1
 
+int GPIO_ReadIO(unsigned gpio)
+{
+	return gpio_get_value(gpio);
+}
+
+void GPIO_WriteIO(int value, unsigned gpio)
+{
+	gpio_set_value(gpio, value);
+}
+
+int GPIO_InitIODir(int value, unsigned gpio)
+{
+	return gpio_direction_output(gpio, value);
+}
+
+int GPIO_ModeSetup(unsigned gpio, int value)
+{
+	return 0;
+}
 
 #define SDA_GPIO_M	GPIO_ModeSetup(HZ008_SDA, 0)
 #define SCL_GPIO_M	GPIO_ModeSetup(HZ008_SCL, 0)
@@ -102,7 +128,7 @@ void HZ008_i2c_stop(void)
 unsigned char HZ008_i2c_write_byte(unsigned char data)
 {
 	unsigned char i, ack;
-	kal_bool ret;
+	// kal_bool ret;
 
 	SDA_OUT;
 	I2C_DELAY;   
@@ -306,9 +332,14 @@ unsigned char GetRandom(void)
 	seed+=ADC;
 	seed+=TCNT3+TCNT0+TCNT1+TCNT2;
 	srandom(seed);*/
-	return(rand());
+	return 0;
+	// return(rand());
 }
 
+static unsigned char EDesEn_Crypt(unsigned char *rx_data, unsigned char *ex_data)
+{
+	return Amba_app_srt_edesen_crypt(rx_data, ex_data);
+}
 
 unsigned char TestProtection(void)
 {

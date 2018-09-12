@@ -11,7 +11,7 @@ typedef unsigned int        UINT32;         /* 32 bits */
 typedef unsigned long long  UINT64;         /* 64 bits */
 typedef unsigned short      WCHAR;         /* 16 bits */
 
-
+extern unsigned char Amba_app_srt_edesen_crypt(unsigned char *ck235_des_data,unsigned char *pDataBuffer);
 extern void AppLibCard_ConfigDefault(void);
 extern void AppLibVideoEnc_StartPipe(void);
 extern void AppLibVideoDec_Reset(void);

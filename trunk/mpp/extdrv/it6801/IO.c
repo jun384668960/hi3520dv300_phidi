@@ -261,8 +261,8 @@ static int srt_write(BYTE offset,BYTE byteno,BYTE *p_data)
             printk("buf[%d] = 0x%x\n",i,buf[i]);
         }
         // client->flags |= I2C_M_RECV_LEN;
-        // ret = i2c_master_send(client, buf, 9);
-        ret = hi_i2c_dma_write(client, (unsigned int)p_data,  0xa0, 1, 8);
+        ret = i2c_master_send(client, buf, 9);
+        // ret = hi_i2c_dma_write(client, (unsigned int)p_data,  0xa0, 1, 8);
         if(ret != 0)
         {   
             printk("%s:i2c write failed,ret = %d\n",__func__, ret);
