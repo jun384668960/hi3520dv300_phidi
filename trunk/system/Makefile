@@ -3,7 +3,7 @@ CC := $(CROSS)gcc
 CFLAG := -Wno-write-strings -lpthread \
 		-I../utils -I./include \
 		
-BINS := system
+BINS := fw_update
 
 SRCS := $(wildcard ./src/*.c)
 SRCS += $(wildcard ../utils/*.c)
@@ -13,6 +13,7 @@ all: $(BINS)
 
 $(BINS):
 	$(CC) $(SRCS) -o $(BINS) $(CFLAG)
+	cp $(BINS) "../output/"
 	
 clean:
 	@rm -rf $(BINS)
